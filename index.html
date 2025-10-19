@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExtintorCheck Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100%;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 10px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #ff6b6b;
+            border-bottom: 2px solid #ff6b6b;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+
+        .radio-option:hover {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .radio-option input[type="radio"] {
+            margin: 0;
+        }
+
+        .radio-option input[type="radio"]:checked + span {
+            color: #ff6b6b;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-block {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .extinguisher-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .extinguisher-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #495057;
+            margin: 0;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-excelente {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-optimo {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-mal {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #ff6b6b;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+            transition: width 0.3s ease;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #ff6b6b;
+        }
+
+        .month-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .month-nav {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .current-month {
+            flex: 1;
+            text-align: center;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🧯 ExtintorCheck Pro</h1>
+            <div class="subtitle">Gestión Profesional de Extintores</div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('checklist')">📋 Check-list</button>
+            <button class="nav-tab" onclick="showTab('registros')">📁 Registros</button>
+            <button class="nav-tab" onclick="showTab('estadisticas')">📊 Estadísticas</button>
+            <button class="nav-tab" onclick="showTab('reportes')">📄 Reportes</button>
+        </nav>
+
+        <!-- Tab: Check-list -->
+        <div id="checklist" class="tab-content active">
+            <div class="month-selector">
+                <button class="month-nav" onclick="changeMonth(-1)">‹</button>
+                <div class="current-month" id="currentMonth"></div>
+                <button class="month-nav" onclick="changeMonth(1)">›</button>
+            </div>
+
+            <form id="extinguisherForm">
+                <div class="form-group">
+                    <label for="ubicacion">📍 Ubicación</label>
+                    <input type="text" id="ubicacion" class="form-control" placeholder="Ej: Planta baja - Pasillo A" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🔥 Tipo de Extintor</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="tipo" value="CO2" required>
+                            <span>CO2</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="tipo" value="PQS" required>
+                            <span>PQS</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="capacidad">⚖️ Capacidad (kg)</label>
+                    <select id="capacidad" class="form-control" required>
+                        <option value="">Seleccionar capacidad</option>
+                        <option value="2">2 kg</option>
+                        <option value="4">4 kg</option>
+                        <option value="4.5">4.5 kg</option>
+                        <option value="6">6 kg</option>
+                        <option value="9">9 kg</option>
+                        <option value="12">12 kg</option>
+                        <option value="50">50 kg</option>
+                        <option value="70">70 kg</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="senalizacion" name="senalizacion">
+                        <label for="senalizacion">🚨 Cuenta con señalización</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🔧 Estado del Manómetro</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="manometro" value="baja_presion" required>
+                            <span>Baja Presión</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="manometro" value="presion_optima" required>
+                            <span>Presión Óptima</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="manometro" value="sobre_presion" required>
+                            <span>Sobre Presión</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🔗 Estado de las Mangueras</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="mangueras" value="mal_estado" required>
+                            <span>Mal Estado</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="mangueras" value="optimo" required>
+                            <span>Óptimo</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="mangueras" value="excelente" required>
+                            <span>Excelente</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="seguros" name="seguros">
+                        <label for="seguros">🔒 Cuenta con seguros y cincho</label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="selloSeguridadGroup" style="display: none;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="selloSeguridad" name="selloSeguridad">
+                        <label for="selloSeguridad">🏷️ Cuenta con sello de seguridad (Solo PQS)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>💨 Estado del Difusor</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="difusor" value="mal_estado" required>
+                            <span>Mal Estado</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="difusor" value="optimo" required>
+                            <span>Óptimo</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="difusor" value="excelente" required>
+                            <span>Excelente</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="caducidad">📅 Fecha de Caducidad</label>
+                    <input type="date" id="caducidad" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🏥 Estado Físico General</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="estado_fisico" value="mal_estado" required>
+                            <span>Mal Estado</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="estado_fisico" value="optimo" required>
+                            <span>Óptimo</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="estado_fisico" value="excelente" required>
+                            <span>Excelente</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">💾 Guardar Registro</button>
+            </form>
+        </div>
+
+        <!-- Tab: Registros -->
+        <div id="registros" class="tab-content">
+            <div class="month-selector">
+                <button class="month-nav" onclick="changeRegistrosMonth(-1)">‹</button>
+                <div class="current-month" id="registrosMonth"></div>
+                <button class="month-nav" onclick="changeRegistrosMonth(1)">›</button>
+            </div>
+            
+            <div id="registrosList"></div>
+        </div>
+
+        <!-- Tab: Estadísticas -->
+        <div id="estadisticas" class="tab-content">
+            <div class="month-selector">
+                <button class="month-nav" onclick="changeStatsMonth(-1)">‹</button>
+                <div class="current-month" id="statsMonth"></div>
+                <button class="month-nav" onclick="changeStatsMonth(1)">›</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalExtintores">0</div>
+                    <div class="stat-label">Total Extintores</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="extintoresExcelentes">0</div>
+                    <div class="stat-label">Excelente Estado</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="extintoresOptimos">0</div>
+                    <div class="stat-label">Estado Óptimo</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="extintoresMalos">0</div>
+                    <div class="stat-label">Mal Estado</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3 style="margin-top: 0; color: #495057;">📊 Distribución por Tipo</h3>
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>CO2</span>
+                        <span id="co2Percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="co2Progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>PQS</span>
+                        <span id="pqsPercentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="pqsProgress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <h3 style="margin-top: 0; color: #495057;">⚠️ Alertas del Mes</h3>
+                <div id="alertsList"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Reportes -->
+        <div id="reportes" class="tab-content">
+            <div class="month-selector">
+                <button class="month-nav" onclick="changeReportMonth(-1)">‹</button>
+                <div class="current-month" id="reportMonth"></div>
+                <button class="month-nav" onclick="changeReportMonth(1)">›</button>
+            </div>
+
+            <div class="stat-card" style="margin-bottom: 20px;">
+                <h3 style="margin-top: 0; color: #495057;">📄 Generar Reporte Mensual</h3>
+                <p style="color: #6c757d; margin-bottom: 20px;">
+                    Exporta todos los registros del mes seleccionado en formato PDF para presentar a la administración.
+                </p>
+                <button onclick="generatePDF()" class="btn btn-success btn-block">
+                    📥 Descargar Reporte PDF
+                </button>
+            </div>
+
+            <div class="stat-card">
+                <h3 style="margin-top: 0; color: #495057;">🔄 Gestión Mensual</h3>
+                <p style="color: #6c757d; margin-bottom: 20px;">
+                    Herramientas para gestionar el ciclo mensual de inspecciones.
+                </p>
+                <button onclick="resetMonthlyData()" class="btn" style="background: #17a2b8; color: white; margin-bottom: 10px;" class="btn-block">
+                    🔄 Reiniciar Mes Actual
+                </button>
+                <button onclick="archiveCurrentMonth()" class="btn" style="background: #6f42c1; color: white;" class="btn-block">
+                    📦 Archivar Mes Actual
+                </button>
+            </div>
+
+            <div class="stat-card">
+                <h3 style="margin-top: 0; color: #495057;">💾 Gestión de Datos</h3>
+                <p style="color: #6c757d; margin-bottom: 20px;">
+                    Todos los datos se almacenan localmente en tu dispositivo para garantizar la privacidad y disponibilidad offline.
+                </p>
+                <button onclick="exportData()" class="btn btn-secondary btn-block">
+                    📤 Exportar Datos JSON
+                </button>
+                <button onclick="clearAllData()" class="btn" style="background: #dc3545; color: white; margin-top: 10px;" onclick="return confirm('¿Estás seguro de eliminar todos los datos?')">
+                    🗑️ Limpiar Todos los Datos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentDate = new Date();
+        let registrosDate = new Date();
+        let statsDate = new Date();
+        let reportDate = new Date();
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            updateMonthDisplays();
+            loadRegistros();
+            updateStats();
+            
+            // Configurar formulario
+            document.getElementById('extinguisherForm').addEventListener('submit', handleFormSubmit);
+            
+            // Configurar eventos para mostrar/ocultar sello de seguridad
+            document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+                radio.addEventListener('change', toggleSelloSeguridad);
+            });
+            
+            // Actualizar formularios mensualmente
+            checkMonthlyReset();
+        });
+
+        // Función para mostrar/ocultar sello de seguridad
+        function toggleSelloSeguridad() {
+            const tipoSeleccionado = document.querySelector('input[name="tipo"]:checked');
+            const selloGroup = document.getElementById('selloSeguridadGroup');
+            const selloCheckbox = document.getElementById('selloSeguridad');
+            
+            if (tipoSeleccionado && tipoSeleccionado.value === 'PQS') {
+                selloGroup.style.display = 'block';
+            } else {
+                selloGroup.style.display = 'none';
+                selloCheckbox.checked = false; // Limpiar si no es PQS
+            }
+        }
+
+        // Gestión de pestañas
+        function showTab(tabName) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Mostrar pestaña seleccionada
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Actualizar contenido según la pestaña
+            if (tabName === 'registros') {
+                loadRegistros();
+            } else if (tabName === 'estadisticas') {
+                updateStats();
+            }
+        }
+
+        // Gestión de fechas
+        function updateMonthDisplays() {
+            const months = [
+                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+            ];
+            
+            document.getElementById('currentMonth').textContent = 
+                `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            document.getElementById('registrosMonth').textContent = 
+                `${months[registrosDate.getMonth()]} ${registrosDate.getFullYear()}`;
+            document.getElementById('statsMonth').textContent = 
+                `${months[statsDate.getMonth()]} ${statsDate.getFullYear()}`;
+            document.getElementById('reportMonth').textContent = 
+                `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
+        }
+
+        function changeMonth(direction) {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+            updateMonthDisplays();
+        }
+
+        function changeRegistrosMonth(direction) {
+            registrosDate.setMonth(registrosDate.getMonth() + direction);
+            updateMonthDisplays();
+            loadRegistros();
+        }
+
+        function changeStatsMonth(direction) {
+            statsDate.setMonth(statsDate.getMonth() + direction);
+            updateMonthDisplays();
+            updateStats();
+        }
+
+        function changeReportMonth(direction) {
+            reportDate.setMonth(reportDate.getMonth() + direction);
+            updateMonthDisplays();
+        }
+
+        // Manejo del formulario
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            const editingId = form.dataset.editingId;
+            
+            const registro = {
+                id: editingId ? parseInt(editingId) : Date.now(),
+                fecha: editingId ? getRegistros().find(r => r.id == editingId).fecha : new Date().toISOString(),
+                fechaActualizacion: editingId ? new Date().toISOString() : undefined,
+                mes: currentDate.getMonth(),
+                año: currentDate.getFullYear(),
+                ubicacion: document.getElementById('ubicacion').value || '',
+                tipo: formData.get('tipo'),
+                capacidad: document.getElementById('capacidad').value,
+                senalizacion: document.getElementById('senalizacion').checked,
+                manometro: formData.get('manometro'),
+                mangueras: formData.get('mangueras'),
+                seguros: document.getElementById('seguros').checked,
+                selloSeguridad: document.getElementById('selloSeguridad').checked,
+                difusor: formData.get('difusor'),
+                caducidad: document.getElementById('caducidad').value || '',
+                estado_fisico: formData.get('estado_fisico')
+            };
+            
+            if (editingId) {
+                // Actualizar registro existente
+                updateRegistro(registro);
+                showAlert('✅ Registro actualizado exitosamente', 'success');
+                
+                // Salir del modo edición
+                cancelEdit();
+            } else {
+                // Guardar nuevo registro
+                saveRegistro(registro);
+                showAlert('✅ Registro guardado exitosamente', 'success');
+                
+                // Limpiar formulario
+                form.reset();
+            }
+            
+            // Actualizar estadísticas
+            updateStats();
+        }
+
+        function saveRegistro(registro) {
+            let registros = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
+            registros.push(registro);
+            localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+        }
+
+        function updateRegistro(registroActualizado) {
+            let registros = getRegistros();
+            const index = registros.findIndex(r => r.id == registroActualizado.id);
+            
+            if (index !== -1) {
+                registros[index] = registroActualizado;
+                localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+                loadRegistros(); // Recargar la lista
+            }
+        }
+
+        function getRegistros() {
+            return JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
+        }
+
+        function getRegistrosByMonth(mes, año) {
+            const registros = getRegistros();
+            return registros.filter(r => r.mes === mes && r.año === año);
+        }
+
+        // Cargar y mostrar registros
+        function loadRegistros() {
+            const registros = getRegistrosByMonth(registrosDate.getMonth(), registrosDate.getFullYear());
+            const container = document.getElementById('registrosList');
+            
+            if (registros.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <h3>No hay registros</h3>
+                        <p>No se encontraron registros para este mes.</p>
+                        <button onclick="copyPreviousMonthRegistros()" class="btn btn-primary" style="margin-top: 15px;">
+                            📋 Copiar Extintores del Mes Anterior
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = registros.map(registro => `
+                <div class="extinguisher-card">
+                    <div class="card-header">
+                        <h4 class="card-title">📍 ${registro.ubicacion}</h4>
+                        <span class="status-badge status-${registro.estado_fisico.replace('_', '-')}">
+                            ${registro.estado_fisico.replace('_', ' ').toUpperCase()}
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                        <div><strong>Tipo:</strong> ${registro.tipo}</div>
+                        <div><strong>Capacidad:</strong> ${registro.capacidad} kg</div>
+                        <div><strong>Manómetro:</strong> ${registro.manometro.replace('_', ' ')}</div>
+                        <div><strong>Mangueras:</strong> ${registro.mangueras}</div>
+                        <div><strong>Difusor:</strong> ${registro.difusor}</div>
+                        <div><strong>Señalización:</strong> ${registro.senalizacion ? '✅' : '❌'}</div>
+                        <div><strong>Seguros:</strong> ${registro.seguros ? '✅' : '❌'}</div>
+                        ${registro.tipo === 'PQS' ? `<div><strong>Sello Seguridad:</strong> ${registro.selloSeguridad ? '✅' : '❌'}</div>` : ''}
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d;">
+                        <strong>Caducidad:</strong> ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'} | 
+                        <strong>Registrado:</strong> ${new Date(registro.fecha).toLocaleDateString('es-ES')}
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button onclick="editRegistro(${registro.id})" class="btn btn-secondary" style="flex: 1; padding: 6px 12px; font-size: 12px;">
+                            ✏️ Editar
+                        </button>
+                        <button onclick="deleteRegistro(${registro.id})" class="btn" style="background: #dc3545; color: white; flex: 1; padding: 6px 12px; font-size: 12px;">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRegistro(id) {
+            if (confirm('¿Estás seguro de eliminar este registro?')) {
+                let registros = getRegistros();
+                registros = registros.filter(r => r.id != id);
+                localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+                loadRegistros();
+                updateStats();
+                showAlert('🗑️ Registro eliminado', 'warning');
+            }
+        }
+
+        function editRegistro(id) {
+            const registros = getRegistros();
+            const registro = registros.find(r => r.id === id);
+            
+            if (!registro) {
+                showAlert('❌ Registro no encontrado', 'warning');
+                return;
+            }
+            
+            // Cambiar a la pestaña de check-list
+            showTab('checklist');
+            document.querySelector('[onclick="showTab(\'checklist\')"]').classList.add('active');
+            
+            // Esperar un momento para que la pestaña se active completamente
+            setTimeout(() => {
+                // Llenar el formulario con los datos del registro
+                document.getElementById('ubicacion').value = registro.ubicacion || '';
+                
+                // Seleccionar tipo de extintor
+                const tipoRadio = document.querySelector(`input[name="tipo"][value="${registro.tipo}"]`);
+                if (tipoRadio) tipoRadio.checked = true;
+                
+                document.getElementById('capacidad').value = registro.capacidad || '';
+                document.getElementById('senalizacion').checked = registro.senalizacion || false;
+                
+                // Seleccionar estado del manómetro
+                const manometroRadio = document.querySelector(`input[name="manometro"][value="${registro.manometro}"]`);
+                if (manometroRadio) manometroRadio.checked = true;
+                
+                // Seleccionar estado de mangueras
+                const manguerasRadio = document.querySelector(`input[name="mangueras"][value="${registro.mangueras}"]`);
+                if (manguerasRadio) manguerasRadio.checked = true;
+                
+                document.getElementById('seguros').checked = registro.seguros || false;
+                document.getElementById('selloSeguridad').checked = registro.selloSeguridad || false;
+                
+                // Mostrar/ocultar sello de seguridad según el tipo
+                toggleSelloSeguridad();
+                
+                // Seleccionar estado del difusor
+                const difusorRadio = document.querySelector(`input[name="difusor"][value="${registro.difusor}"]`);
+                if (difusorRadio) difusorRadio.checked = true;
+                
+                document.getElementById('caducidad').value = registro.caducidad || '';
+                
+                // Seleccionar estado físico
+                const estadoRadio = document.querySelector(`input[name="estado_fisico"][value="${registro.estado_fisico}"]`);
+                if (estadoRadio) estadoRadio.checked = true;
+            }, 100);
+            
+            // Cambiar el comportamiento del formulario para edición
+            const form = document.getElementById('extinguisherForm');
+            form.dataset.editingId = id;
+            
+            // Cambiar el texto del botón
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.textContent = '✏️ Actualizar Registro';
+            submitBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            
+            // Agregar botón de cancelar
+            if (!document.getElementById('cancelEditBtn')) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.id = 'cancelEditBtn';
+                cancelBtn.className = 'btn btn-secondary btn-block';
+                cancelBtn.textContent = '❌ Cancelar Edición';
+                cancelBtn.onclick = cancelEdit;
+                form.appendChild(cancelBtn);
+            }
+            
+            showAlert('✏️ Modo edición activado', 'success');
+        }
+
+        function cancelEdit() {
+            const form = document.getElementById('extinguisherForm');
+            delete form.dataset.editingId;
+            
+            // Restaurar botón original
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.textContent = '💾 Guardar Registro';
+            submitBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a24)';
+            
+            // Remover botón de cancelar
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (cancelBtn) {
+                cancelBtn.remove();
+            }
+            
+            // Limpiar formulario
+            form.reset();
+            
+            showAlert('❌ Edición cancelada', 'warning');
+        }
+
+        function copyPreviousMonthRegistros() {
+            const currentMonth = registrosDate.getMonth();
+            const currentYear = registrosDate.getFullYear();
+            
+            // Buscar registros del mes anterior
+            let previousMonth = currentMonth - 1;
+            let previousYear = currentYear;
+            
+            if (previousMonth < 0) {
+                previousMonth = 11;
+                previousYear = currentYear - 1;
+            }
+            
+            const previousRegistros = getRegistrosByMonth(previousMonth, previousYear);
+            
+            if (previousRegistros.length === 0) {
+                showAlert('⚠️ No hay registros del mes anterior para copiar', 'warning');
+                return;
+            }
+            
+            if (!confirm(`¿Copiar ${previousRegistros.length} extintores del mes anterior? Esto creará plantillas para el mes actual.`)) {
+                return;
+            }
+            
+            // Crear nuevos registros basados en los anteriores (solo estructura, sin datos de inspección)
+            const nuevosRegistros = previousRegistros.map(registro => ({
+                id: Date.now() + Math.random(),
+                fecha: new Date().toISOString(),
+                mes: currentMonth,
+                año: currentYear,
+                ubicacion: registro.ubicacion,
+                tipo: registro.tipo,
+                capacidad: registro.capacidad,
+                senalizacion: false, // Resetear para nueva inspección
+                manometro: 'presion_optima', // Valor por defecto
+                mangueras: 'optimo', // Valor por defecto
+                seguros: false, // Resetear para nueva inspección
+                selloSeguridad: false, // Resetear para nueva inspección
+                difusor: 'optimo', // Valor por defecto
+                caducidad: registro.caducidad, // Mantener fecha de caducidad
+                estado_fisico: 'optimo' // Valor por defecto
+            }));
+            
+            // Guardar los nuevos registros
+            let registros = getRegistros();
+            registros = registros.concat(nuevosRegistros);
+            localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+            
+            loadRegistros();
+            updateStats();
+            showAlert(`✅ ${nuevosRegistros.length} extintores copiados como plantillas`, 'success');
+        }
+
+        // Estadísticas
+        function updateStats() {
+            const registros = getRegistrosByMonth(statsDate.getMonth(), statsDate.getFullYear());
+            
+            // Contadores básicos
+            const total = registros.length;
+            const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
+            const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
+            const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
+            
+            document.getElementById('totalExtintores').textContent = total;
+            document.getElementById('extintoresExcelentes').textContent = excelentes;
+            document.getElementById('extintoresOptimos').textContent = optimos;
+            document.getElementById('extintoresMalos').textContent = malos;
+            
+            // Distribución por tipo
+            const co2Count = registros.filter(r => r.tipo === 'CO2').length;
+            const pqsCount = registros.filter(r => r.tipo === 'PQS').length;
+            
+            const co2Percentage = total > 0 ? Math.round((co2Count / total) * 100) : 0;
+            const pqsPercentage = total > 0 ? Math.round((pqsCount / total) * 100) : 0;
+            
+            document.getElementById('co2Percentage').textContent = `${co2Percentage}%`;
+            document.getElementById('pqsPercentage').textContent = `${pqsPercentage}%`;
+            document.getElementById('co2Progress').style.width = `${co2Percentage}%`;
+            document.getElementById('pqsProgress').style.width = `${pqsPercentage}%`;
+            
+            // Alertas
+            updateAlerts(registros);
+        }
+
+        function updateAlerts(registros) {
+            const alertsContainer = document.getElementById('alertsList');
+            const alerts = [];
+            
+            // Verificar caducidades próximas (próximos 30 días)
+            const today = new Date();
+            const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000));
+            
+            registros.forEach(registro => {
+                if (registro.caducidad) {
+                    const caducidad = new Date(registro.caducidad + 'T00:00:00');
+                    if (caducidad <= thirtyDaysFromNow && caducidad >= today) {
+                        alerts.push(`⚠️ Extintor en ${registro.ubicacion} caduca el ${caducidad.toLocaleDateString('es-ES')}`);
+                    }
+                }
+                
+                if (registro.estado_fisico === 'mal_estado') {
+                    alerts.push(`🔴 Extintor en ${registro.ubicacion} en mal estado físico`);
+                }
+                
+                if (registro.manometro === 'baja_presion' || registro.manometro === 'sobre_presion') {
+                    alerts.push(`🔧 Extintor en ${registro.ubicacion} con problemas de presión`);
+                }
+                
+                if (!registro.senalizacion) {
+                    alerts.push(`🚨 Extintor en ${registro.ubicacion} sin señalización`);
+                }
+                
+                if (registro.tipo === 'PQS' && !registro.selloSeguridad) {
+                    alerts.push(`🏷️ Extintor PQS en ${registro.ubicacion} sin sello de seguridad`);
+                }
+            });
+            
+            if (alerts.length === 0) {
+                alertsContainer.innerHTML = '<div class="alert alert-success">✅ No hay alertas para este mes</div>';
+            } else {
+                alertsContainer.innerHTML = alerts.map(alert => 
+                    `<div class="alert alert-warning">${alert}</div>`
+                ).join('');
+            }
+        }
+
+        // Generación de PDF
+        function generatePDF() {
+            const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
+            
+            if (registros.length === 0) {
+                showAlert('⚠️ No hay registros para generar el reporte', 'warning');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Configuración del documento
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 20;
+            let yPosition = margin;
+            
+            // Título
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 15;
+            
+            // Fecha del reporte
+            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'normal');
+            doc.text(`${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 20;
+            
+            // Resumen estadístico
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Resumen Estadístico', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'normal');
+            
+            const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
+            const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
+            const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
+            
+            doc.text(`Total de extintores revisados: ${registros.length}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Estado excelente: ${excelentes}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Estado óptimo: ${optimos}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Mal estado: ${malos}`, margin, yPosition);
+            yPosition += 20;
+            
+            // Detalle de registros
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detalle de Registros', margin, yPosition);
+            yPosition += 15;
+            
+            registros.forEach((registro, index) => {
+                // Verificar si necesitamos una nueva página
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${index + 1}. ${registro.ubicacion}`, margin, yPosition);
+                yPosition += 7;
+                
+                doc.setFont(undefined, 'normal');
+                doc.text(`Tipo: ${registro.tipo} | Capacidad: ${registro.capacidad} kg`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Estado físico: ${registro.estado_fisico.replace('_', ' ')}`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                yPosition += 5;
+                if (registro.tipo === 'PQS') {
+                    doc.text(`Sello de seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                    yPosition += 5;
+                }
+                doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
+                yPosition += 10;
+            });
+            
+            // Pie de página
+            const today = new Date();
+            doc.setFontSize(10);
+            doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
+            
+            // Descargar PDF
+            const fileName = `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`;
+            doc.save(fileName);
+            
+            showAlert('📄 Reporte PDF generado exitosamente', 'success');
+        }
+
+        // Gestión de datos
+        function exportData() {
+            const data = {
+                registros: getRegistros(),
+                exportDate: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `extintores_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showAlert('📤 Datos exportados exitosamente', 'success');
+        }
+
+        function clearAllData() {
+            if (confirm('¿Estás seguro de eliminar todos los datos? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem('extintorRegistros');
+                localStorage.removeItem('archivedMonths');
+                loadRegistros();
+                updateStats();
+                showAlert('🗑️ Todos los datos han sido eliminados', 'warning');
+            }
+        }
+
+        function resetMonthlyData() {
+            const currentMonth = reportDate.getMonth();
+            const currentYear = reportDate.getFullYear();
+            
+            if (!confirm(`¿Reiniciar todos los registros del mes actual? Esto eliminará todas las inspecciones de ${getMonthName(currentMonth)} ${currentYear}.`)) {
+                return;
+            }
+            
+            let registros = getRegistros();
+            registros = registros.filter(r => !(r.mes === currentMonth && r.año === currentYear));
+            localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+            
+            loadRegistros();
+            updateStats();
+            showAlert('🔄 Mes actual reiniciado exitosamente', 'success');
+        }
+
+        function archiveCurrentMonth() {
+            const currentMonth = reportDate.getMonth();
+            const currentYear = reportDate.getFullYear();
+            const registrosDelMes = getRegistrosByMonth(currentMonth, currentYear);
+            
+            if (registrosDelMes.length === 0) {
+                showAlert('⚠️ No hay registros para archivar en este mes', 'warning');
+                return;
+            }
+            
+            if (!confirm(`¿Archivar ${registrosDelMes.length} registros del mes ${getMonthName(currentMonth)} ${currentYear}?`)) {
+                return;
+            }
+            
+            // Obtener archivos existentes
+            let archivedMonths = JSON.parse(localStorage.getItem('archivedMonths') || '[]');
+            
+            // Crear archivo del mes
+            const archivo = {
+                mes: currentMonth,
+                año: currentYear,
+                fechaArchivo: new Date().toISOString(),
+                registros: registrosDelMes,
+                totalExtintores: registrosDelMes.length,
+                estadisticas: {
+                    excelentes: registrosDelMes.filter(r => r.estado_fisico === 'excelente').length,
+                    optimos: registrosDelMes.filter(r => r.estado_fisico === 'optimo').length,
+                    malos: registrosDelMes.filter(r => r.estado_fisico === 'mal_estado').length
+                }
+            };
+            
+            // Verificar si ya existe un archivo para este mes
+            const existingIndex = archivedMonths.findIndex(a => a.mes === currentMonth && a.año === currentYear);
+            if (existingIndex !== -1) {
+                archivedMonths[existingIndex] = archivo;
+            } else {
+                archivedMonths.push(archivo);
+            }
+            
+            // Guardar archivo
+            localStorage.setItem('archivedMonths', JSON.stringify(archivedMonths));
+            
+            showAlert(`📦 Mes ${getMonthName(currentMonth)} ${currentYear} archivado exitosamente`, 'success');
+        }
+
+        function getMonthName(monthIndex) {
+            const months = [
+                'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+            ];
+            return months[monthIndex];
+        }
+
+        // Utilidades
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.left = '50%';
+            alertDiv.style.transform = 'translateX(-50%)';
+            alertDiv.style.zIndex = '1000';
+            alertDiv.style.minWidth = '300px';
+            alertDiv.style.textAlign = 'center';
+            
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        function checkMonthlyReset() {
+            const lastReset = localStorage.getItem('lastMonthlyReset');
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            if (!lastReset) {
+                localStorage.setItem('lastMonthlyReset', `${currentYear}-${currentMonth}`);
+                return;
+            }
+            
+            const [lastYear, lastMonth] = lastReset.split('-').map(Number);
+            
+            if (currentYear > lastYear || (currentYear === lastYear && currentMonth > lastMonth)) {
+                // Nuevo mes detectado - actualizar formularios
+                localStorage.setItem('lastMonthlyReset', `${currentYear}-${currentMonth}`);
+                showAlert('📅 Formularios actualizados para el nuevo mes', 'success');
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99126c72871e7244',t:'MTc2MDg5OTQzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
