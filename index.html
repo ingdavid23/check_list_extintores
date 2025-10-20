@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.e0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExtintorCheck Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -593,12 +593,18 @@
                 <p style="color: #6c757d; margin-bottom: 20px;">
                     Genera, visualiza y descarga reportes PDF de tus inspecciones mensuales.
                 </p>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button onclick="generateAndPreviewPDF()" class="btn btn-primary" style="flex: 1;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <button onclick="generateAndPreviewPDF()" class="btn btn-primary">
                         👁️ Generar y Visualizar
                     </button>
-                    <button onclick="generatePDF()" class="btn btn-success" style="flex: 1;">
+                    <button onclick="generatePDF()" class="btn btn-success">
                         📥 Descargar Directo
+                    </button>
+                    <button onclick="generatePDFURL()" class="btn" style="background: #6f42c1; color: white;">
+                        🔗 Generar URL
+                    </button>
+                    <button onclick="openInExternalBrowser()" class="btn" style="background: #fd7e14; color: white;">
+                        🌐 Abrir en Navegador
                     </button>
                 </div>
                 <button onclick="togglePDFManager()" class="btn btn-secondary btn-block">
@@ -628,12 +634,20 @@
                 <div style="background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px;">
                     <div id="pdfPreview" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 4px; padding: 15px; text-align: left; font-size: 12px; line-height: 1.4;"></div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button onclick="downloadCurrentPDF()" class="btn btn-success" style="flex: 1;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <button onclick="downloadCurrentPDF()" class="btn btn-success">
                         📥 Descargar Este PDF
                     </button>
-                    <button onclick="savePDFToManager()" class="btn btn-primary" style="flex: 1;">
+                    <button onclick="savePDFToManager()" class="btn btn-primary">
                         💾 Guardar en Gestor
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button onclick="generateCurrentPDFURL()" class="btn" style="background: #6f42c1; color: white;">
+                        🔗 Generar URL
+                    </button>
+                    <button onclick="openCurrentPDFInBrowser()" class="btn" style="background: #fd7e14; color: white;">
+                        🌐 Abrir en Navegador
                     </button>
                 </div>
             </div>
@@ -676,6 +690,7 @@
         // Variables globales para PDF
         let currentPDFData = null;
         let currentPDFBlob = null;
+        let currentPDFURL = null;
 
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
@@ -1763,6 +1778,220 @@
             showAlert('👁️ Vista previa generada exitosamente', 'success');
         }
 
+        // Función para generar URL temporal del PDF
+        function generatePDFURL() {
+            const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
+            
+            if (registros.length === 0) {
+                showAlert('⚠️ No hay registros para generar el reporte', 'warning');
+                return;
+            }
+
+            showAlert('🔗 Generando URL del PDF...', 'success');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Generar el PDF
+                const pdfData = generatePDFContent(doc, registros);
+                const pdfBlob = doc.output('blob');
+                
+                // Limpiar URL anterior si existe
+                if (currentPDFURL) {
+                    URL.revokeObjectURL(currentPDFURL);
+                }
+                
+                // Crear nueva URL temporal
+                currentPDFURL = URL.createObjectURL(pdfBlob);
+                currentPDFData = pdfData;
+                currentPDFBlob = pdfBlob;
+                
+                // Mostrar modal con la URL
+                showPDFURLModal(currentPDFURL, pdfData.fileName);
+                
+            } catch (error) {
+                console.error('❌ Error al generar URL del PDF:', error);
+                showAlert('❌ Error al generar la URL del PDF', 'warning');
+            }
+        }
+
+        // Función para abrir PDF en navegador externo
+        function openInExternalBrowser() {
+            const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
+            
+            if (registros.length === 0) {
+                showAlert('⚠️ No hay registros para generar el reporte', 'warning');
+                return;
+            }
+
+            showAlert('🌐 Abriendo PDF en navegador externo...', 'success');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Generar el PDF
+                const pdfData = generatePDFContent(doc, registros);
+                const pdfBlob = doc.output('blob');
+                
+                // Crear URL temporal
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                
+                // Abrir en nueva pestaña/ventana
+                const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                
+                if (newWindow) {
+                    showAlert('🌐 PDF abierto en nueva pestaña', 'success');
+                    
+                    // Limpiar URL después de un tiempo
+                    setTimeout(() => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, 30000); // 30 segundos
+                } else {
+                    // Si el popup fue bloqueado, mostrar URL manual
+                    showPDFURLModal(pdfUrl, pdfData.fileName, true);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al abrir PDF en navegador:', error);
+                showAlert('❌ Error al abrir el PDF en navegador externo', 'warning');
+            }
+        }
+
+        // Función para mostrar modal con URL del PDF
+        function showPDFURLModal(url, fileName, isBlocked = false) {
+            // Crear modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                max-width: 90%;
+                width: 400px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            `;
+            
+            modalContent.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h3 style="color: #495057; margin: 0 0 10px 0;">
+                        ${isBlocked ? '🚫 Popup Bloqueado' : '🔗 URL del PDF Generada'}
+                    </h3>
+                    <p style="color: #6c757d; margin: 0; font-size: 14px;">
+                        ${isBlocked ? 
+                            'Tu navegador bloqueó la ventana emergente. Usa la URL de abajo:' : 
+                            'URL temporal válida por 30 minutos:'
+                        }
+                    </p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="font-size: 12px; color: #6c757d; margin-bottom: 8px;">
+                        <strong>Archivo:</strong> ${fileName}
+                    </div>
+                    <div style="background: white; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; word-break: break-all; font-family: monospace; font-size: 11px;">
+                        ${url}
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="copyPDFURL('${url}')" class="btn btn-primary" style="flex: 1; padding: 8px 12px; font-size: 13px;">
+                        📋 Copiar URL
+                    </button>
+                    <button onclick="openPDFURL('${url}')" class="btn btn-success" style="flex: 1; padding: 8px 12px; font-size: 13px;">
+                        🌐 Abrir
+                    </button>
+                    <button onclick="closePDFURLModal()" class="btn btn-secondary" style="padding: 8px 12px; font-size: 13px;">
+                        ❌ Cerrar
+                    </button>
+                </div>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 12px; color: #6c757d; text-align: center;">
+                    💡 <strong>Tip:</strong> Copia la URL y pégala en cualquier navegador para acceder al PDF
+                </div>
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Cerrar modal al hacer clic fuera
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closePDFURLModal();
+                }
+            });
+            
+            // Guardar referencia del modal
+            window.currentPDFModal = modal;
+        }
+
+        // Función para copiar URL del PDF
+        function copyPDFURL(url) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showAlert('📋 URL copiada al portapapeles', 'success');
+                }).catch(() => {
+                    fallbackCopyURL(url);
+                });
+            } else {
+                fallbackCopyURL(url);
+            }
+        }
+
+        // Función de respaldo para copiar URL
+        function fallbackCopyURL(url) {
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showAlert('📋 URL copiada al portapapeles', 'success');
+            } catch (err) {
+                showAlert('⚠️ No se pudo copiar automáticamente. Selecciona y copia manualmente.', 'warning');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        // Función para abrir URL del PDF
+        function openPDFURL(url) {
+            const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+            if (newWindow) {
+                showAlert('🌐 PDF abierto en nueva pestaña', 'success');
+                closePDFURLModal();
+            } else {
+                showAlert('🚫 Popup bloqueado. Copia la URL y pégala manualmente en tu navegador.', 'warning');
+            }
+        }
+
+        // Función para cerrar modal de URL
+        function closePDFURLModal() {
+            if (window.currentPDFModal) {
+                document.body.removeChild(window.currentPDFModal);
+                window.currentPDFModal = null;
+            }
+        }
+
         // Generación de PDF con soporte para APK Android (versión simplificada)
         function generatePDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
@@ -1832,8 +2061,70 @@
         // Funciones del gestor de PDFs
         function closePDFViewer() {
             document.getElementById('pdfViewer').style.display = 'none';
+            // Limpiar URL si existe
+            if (currentPDFURL) {
+                URL.revokeObjectURL(currentPDFURL);
+                currentPDFURL = null;
+            }
             currentPDFData = null;
             currentPDFBlob = null;
+        }
+
+        // Función para generar URL del PDF actual en el visor
+        function generateCurrentPDFURL() {
+            if (!currentPDFBlob || !currentPDFData) {
+                showAlert('⚠️ No hay PDF cargado para generar URL', 'warning');
+                return;
+            }
+
+            try {
+                // Limpiar URL anterior si existe
+                if (currentPDFURL) {
+                    URL.revokeObjectURL(currentPDFURL);
+                }
+                
+                // Crear nueva URL temporal
+                currentPDFURL = URL.createObjectURL(currentPDFBlob);
+                
+                // Mostrar modal con la URL
+                showPDFURLModal(currentPDFURL, currentPDFData.fileName);
+                
+            } catch (error) {
+                console.error('❌ Error al generar URL del PDF actual:', error);
+                showAlert('❌ Error al generar la URL del PDF', 'warning');
+            }
+        }
+
+        // Función para abrir PDF actual en navegador externo
+        function openCurrentPDFInBrowser() {
+            if (!currentPDFBlob || !currentPDFData) {
+                showAlert('⚠️ No hay PDF cargado para abrir', 'warning');
+                return;
+            }
+
+            try {
+                // Crear URL temporal
+                const pdfUrl = URL.createObjectURL(currentPDFBlob);
+                
+                // Abrir en nueva pestaña/ventana
+                const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                
+                if (newWindow) {
+                    showAlert('🌐 PDF abierto en nueva pestaña', 'success');
+                    
+                    // Limpiar URL después de un tiempo
+                    setTimeout(() => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, 30000); // 30 segundos
+                } else {
+                    // Si el popup fue bloqueado, mostrar URL manual
+                    showPDFURLModal(pdfUrl, currentPDFData.fileName, true);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al abrir PDF actual en navegador:', error);
+                showAlert('❌ Error al abrir el PDF en navegador externo', 'warning');
+            }
         }
 
         function downloadCurrentPDF() {
@@ -1980,15 +2271,23 @@
                         <div><strong>Archivo:</strong> ${pdf.fileName}</div>
                         <div><strong>Generado:</strong> ${pdf.generatedDate} | <strong>Tamaño:</strong> ${pdf.size} KB</div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick="viewSavedPDF(${pdf.id})" class="btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+                        <button onclick="viewSavedPDF(${pdf.id})" class="btn btn-primary" style="padding: 6px 8px; font-size: 11px;">
                             👁️ Ver
                         </button>
-                        <button onclick="downloadSavedPDF(${pdf.id})" class="btn btn-success" style="flex: 1; padding: 6px 12px; font-size: 12px;">
+                        <button onclick="downloadSavedPDF(${pdf.id})" class="btn btn-success" style="padding: 6px 8px; font-size: 11px;">
                             📥 Descargar
                         </button>
-                        <button onclick="deleteSavedPDF(${pdf.id})" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
-                            🗑️
+                        <button onclick="deleteSavedPDF(${pdf.id})" class="btn" style="background: #dc3545; color: white; padding: 6px 8px; font-size: 11px;">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button onclick="generateSavedPDFURL(${pdf.id})" class="btn" style="background: #6f42c1; color: white; padding: 6px 8px; font-size: 11px;">
+                            🔗 URL
+                        </button>
+                        <button onclick="openSavedPDFInBrowser(${pdf.id})" class="btn" style="background: #fd7e14; color: white; padding: 6px 8px; font-size: 11px;">
+                            🌐 Navegador
                         </button>
                     </div>
                 </div>
@@ -2135,6 +2434,85 @@
             showAlert('🗑️ PDF eliminado del gestor', 'warning');
         }
 
+        function generateSavedPDFURL(pdfId) {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            const pdf = savedPDFs.find(p => p.id === pdfId);
+            
+            if (!pdf) {
+                showAlert('⚠️ PDF no encontrado', 'warning');
+                return;
+            }
+            
+            try {
+                // Convertir base64 de vuelta a blob
+                const byteCharacters = atob(pdf.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                // Crear URL temporal
+                const pdfUrl = URL.createObjectURL(blob);
+                
+                // Mostrar modal con la URL
+                showPDFURLModal(pdfUrl, pdf.fileName);
+                
+                // Limpiar URL después de 30 minutos
+                setTimeout(() => {
+                    URL.revokeObjectURL(pdfUrl);
+                }, 30 * 60 * 1000);
+                
+            } catch (error) {
+                console.error('❌ Error al generar URL del PDF guardado:', error);
+                showAlert('❌ Error al generar la URL del PDF', 'warning');
+            }
+        }
+
+        function openSavedPDFInBrowser(pdfId) {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            const pdf = savedPDFs.find(p => p.id === pdfId);
+            
+            if (!pdf) {
+                showAlert('⚠️ PDF no encontrado', 'warning');
+                return;
+            }
+            
+            try {
+                // Convertir base64 de vuelta a blob
+                const byteCharacters = atob(pdf.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                // Crear URL temporal
+                const pdfUrl = URL.createObjectURL(blob);
+                
+                // Abrir en nueva pestaña/ventana
+                const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                
+                if (newWindow) {
+                    showAlert('🌐 PDF abierto en nueva pestaña', 'success');
+                    
+                    // Limpiar URL después de un tiempo
+                    setTimeout(() => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, 30000); // 30 segundos
+                } else {
+                    // Si el popup fue bloqueado, mostrar URL manual
+                    showPDFURLModal(pdfUrl, pdf.fileName, true);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al abrir PDF guardado en navegador:', error);
+                showAlert('❌ Error al abrir el PDF en navegador externo', 'warning');
+            }
+        }
+
         function clearAllPDFs() {
             if (!confirm('¿Eliminar todos los PDFs guardados? Esta acción no se puede deshacer.')) {
                 return;
@@ -2267,6 +2645,5 @@
 
 
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'991509e6b4237244',t:'MTc2MDkyNjg1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'991523b7c211267c',t:'MTc2MDkyNzkxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
