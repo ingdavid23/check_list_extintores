@@ -194,7 +194,7 @@
 
         .card-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
         }
@@ -374,9 +374,7 @@
             <button class="nav-tab" onclick="showTab('reportes')">📄 Reportes</button>
         </nav>
 
-        <!-- Tab: Check-list -->
         <div id="checklist" class="tab-content active">
-
             <form id="extinguisherForm">
                 <div class="form-group">
                     <label for="ubicacion">📍 Ubicación</label>
@@ -514,18 +512,15 @@
             </form>
         </div>
 
-        <!-- Tab: Registros -->
         <div id="registros" class="tab-content">
             <div class="month-selector">
                 <button class="month-nav" onclick="changeRegistrosMonth(-1)">‹</button>
                 <div class="current-month" id="registrosMonth"></div>
                 <button class="month-nav" onclick="changeRegistrosMonth(1)">›</button>
             </div>
-            
             <div id="registrosList"></div>
         </div>
 
-        <!-- Tab: Estadísticas -->
         <div id="estadisticas" class="tab-content">
             <div class="month-selector">
                 <button class="month-nav" onclick="changeStatsMonth(-1)">‹</button>
@@ -580,7 +575,6 @@
             </div>
         </div>
 
-        <!-- Tab: Reportes -->
         <div id="reportes" class="tab-content">
             <div class="month-selector">
                 <button class="month-nav" onclick="changeReportMonth(-1)">‹</button>
@@ -612,7 +606,6 @@
                 </button>
             </div>
 
-            <!-- Mini Gestor de PDFs -->
             <div id="pdfManager" class="stat-card" style="display: none; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0; color: #495057;">📁 PDFs Guardados</h3>
@@ -623,7 +616,6 @@
                 <div id="pdfList"></div>
             </div>
 
-            <!-- Visor de PDF -->
             <div id="pdfViewer" class="stat-card" style="display: none; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0; color: #495057;">👁️ Vista Previa del PDF</h3>
@@ -632,7 +624,7 @@
                     </button>
                 </div>
                 <div style="background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px;">
-                    <div id="pdfPreview" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 4px; padding: 15px; text-align: left; font-size: 12px; line-height: 1.4;"></div>
+                    <div id="pdfPreview" style="height: 500px; width: 100%; border: 1px solid #ccc; border-radius: 4px;"></div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <button onclick="downloadCurrentPDF()" class="btn btn-success">
@@ -761,8 +753,6 @@
             document.getElementById('reportMonth').textContent = 
                 `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
         }
-
-
 
         function changeRegistrosMonth(direction) {
             registrosDate.setMonth(registrosDate.getMonth() + direction);
@@ -916,16 +906,14 @@
             if (index !== -1) {
                 const registroOriginal = registros[index];
                 
-                // MANTENER el mes y año del registro original para evitar duplicaciones
-                // Solo actualizar los datos del extintor, NO la ubicación temporal
                 registros[index] = {
-                    ...registros[index], // Mantener campos existentes
-                    ...registroActualizado, // Sobrescribir con nuevos valores
-                    id: registros[index].id, // Mantener ID original
-                    fecha: registros[index].fecha, // Mantener fecha de creación original
-                    mes: registros[index].mes, // MANTENER mes original (CRÍTICO)
-                    año: registros[index].año, // MANTENER año original (CRÍTICO)
-                    fechaActualizacion: new Date().toISOString() // Actualizar fecha de modificación
+                    ...registros[index],
+                    ...registroActualizado,
+                    id: registros[index].id,
+                    fecha: registros[index].fecha,
+                    mes: registros[index].mes,
+                    año: registros[index].año,
+                    fechaActualizacion: new Date().toISOString()
                 };
                 
                 console.log('✏️ Registro actualizado correctamente:', {
@@ -938,7 +926,7 @@
                 });
                 
                 localStorage.setItem('extintorRegistros', JSON.stringify(registros));
-                loadRegistros(); // Recargar la lista
+                loadRegistros();
                 return true;
             }
             return false;
@@ -953,7 +941,6 @@
             return registros.filter(r => r.mes === mes && r.año === año);
         }
 
-        // Cargar y mostrar registros
         function loadRegistros() {
             const registros = getRegistrosByMonth(registrosDate.getMonth(), registrosDate.getFullYear());
             const container = document.getElementById('registrosList');
@@ -1026,57 +1013,36 @@
                 return;
             }
             
-            // Cambiar a la pestaña de check-list
             showTab('checklist');
             document.querySelector('[onclick="showTab(\'checklist\')"]').classList.add('active');
             
-            // Esperar un momento para que la pestaña se active completamente
             setTimeout(() => {
-                // Llenar el formulario con los datos del registro
                 document.getElementById('ubicacion').value = registro.ubicacion || '';
-                
-                // Seleccionar tipo de extintor
                 const tipoRadio = document.querySelector(`input[name="tipo"][value="${registro.tipo}"]`);
                 if (tipoRadio) tipoRadio.checked = true;
-                
                 document.getElementById('capacidad').value = registro.capacidad || '';
                 document.getElementById('senalizacion').checked = registro.senalizacion || false;
-                
-                // Seleccionar estado del manómetro
                 const manometroRadio = document.querySelector(`input[name="manometro"][value="${registro.manometro}"]`);
                 if (manometroRadio) manometroRadio.checked = true;
-                
-                // Seleccionar estado de mangueras
                 const manguerasRadio = document.querySelector(`input[name="mangueras"][value="${registro.mangueras}"]`);
                 if (manguerasRadio) manguerasRadio.checked = true;
-                
                 document.getElementById('seguros').checked = registro.seguros || false;
                 document.getElementById('selloSeguridad').checked = registro.selloSeguridad || false;
-                
-                // Mostrar/ocultar sello de seguridad según el tipo
                 toggleSelloSeguridad();
-                
-                // Seleccionar estado del difusor
                 const difusorRadio = document.querySelector(`input[name="difusor"][value="${registro.difusor}"]`);
                 if (difusorRadio) difusorRadio.checked = true;
-                
                 document.getElementById('caducidad').value = registro.caducidad || '';
-                
-                // Seleccionar estado físico
                 const estadoRadio = document.querySelector(`input[name="estado_fisico"][value="${registro.estado_fisico}"]`);
                 if (estadoRadio) estadoRadio.checked = true;
             }, 100);
             
-            // Cambiar el comportamiento del formulario para edición
             const form = document.getElementById('extinguisherForm');
             form.dataset.editingId = id;
             
-            // Cambiar el texto del botón
             const submitBtn = form.querySelector('button[type="submit"]');
             submitBtn.textContent = '✏️ Actualizar Registro';
             submitBtn.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
             
-            // Agregar botón de cancelar
             if (!document.getElementById('cancelEditBtn')) {
                 const cancelBtn = document.createElement('button');
                 cancelBtn.type = 'button';
@@ -1094,21 +1060,16 @@
             const form = document.getElementById('extinguisherForm');
             delete form.dataset.editingId;
             
-            // Restaurar botón original
             const submitBtn = form.querySelector('button[type="submit"]');
             submitBtn.textContent = '💾 Guardar Registro';
             submitBtn.style.background = 'linear-gradient(135deg, #ff6b6b, #ee5a24)';
             
-            // Remover botón de cancelar
             const cancelBtn = document.getElementById('cancelEditBtn');
             if (cancelBtn) {
                 cancelBtn.remove();
             }
             
-            // Limpiar formulario
             form.reset();
-            
-            // Ocultar sello de seguridad al cancelar
             document.getElementById('selloSeguridadGroup').style.display = 'none';
             document.getElementById('selloSeguridad').checked = false;
             
@@ -1122,13 +1083,11 @@
             
             console.log('🔍 Verificando registros para mes actual:', getMonthName(currentMonth), currentYear);
             
-            // Verificar si ya existen registros en el mes actual
             const existingRegistros = getRegistrosByMonth(currentMonth, currentYear);
             
             if (existingRegistros.length === 0) {
                 console.log('📅 No hay registros en el mes actual, buscando mes anterior...');
                 
-                // Buscar registros del mes anterior
                 let previousMonth = currentMonth - 1;
                 let previousYear = currentYear;
                 
@@ -1142,13 +1101,12 @@
                 if (previousRegistros.length > 0) {
                     console.log(`🔄 Encontrados ${previousRegistros.length} registros en ${getMonthName(previousMonth)} ${previousYear}`);
                     
-                    // Cargar automáticamente sin confirmación
                     updateRegistrosToCurrentMonth(
                         previousRegistros, 
                         currentMonth, 
                         currentYear, 
                         `${getMonthName(previousMonth)} ${previousYear}`,
-                        true // Modo silencioso
+                        true
                     );
                 } else {
                     console.log('⚠️ No se encontraron registros del mes anterior');
@@ -1159,24 +1117,20 @@
         }
 
         function copyPreviousMonthRegistros() {
-            // Usar el mes que se está visualizando actualmente en la pestaña de registros
             const targetMonth = registrosDate.getMonth();
             const targetYear = registrosDate.getFullYear();
             
             console.log('🔍 Actualizando registros para mes visualizado:', getMonthName(targetMonth), targetYear);
             
-            // Verificar si ya existen registros en el mes que se está visualizando
             const existingRegistros = getRegistrosByMonth(targetMonth, targetYear);
             if (existingRegistros.length > 0) {
                 if (!confirm(`Ya existen ${existingRegistros.length} registros en ${getMonthName(targetMonth)} ${targetYear}. ¿Deseas reemplazarlos con los datos del mes anterior?`)) {
                     return;
                 }
-                // Si ya existen, actualizar los existentes
                 updateExistingRegistrosFromPrevious(targetMonth, targetYear);
                 return;
             }
             
-            // Buscar registros del mes anterior al mes que se está visualizando
             let previousMonth = targetMonth - 1;
             let previousYear = targetYear;
             
@@ -1190,7 +1144,6 @@
             const previousRegistros = getRegistrosByMonth(previousMonth, previousYear);
             
             if (previousRegistros.length === 0) {
-                // Buscar en meses anteriores hasta encontrar registros
                 let searchMonth = previousMonth;
                 let searchYear = previousYear;
                 let foundRegistros = [];
@@ -1219,7 +1172,6 @@
                     return;
                 }
                 
-                // Usar los registros encontrados
                 updateRegistrosToCurrentMonth(foundRegistros, targetMonth, targetYear, `${monthName} ${searchYear}`);
                 return;
             }
@@ -1229,7 +1181,6 @@
                 return;
             }
             
-            // Copiar al mes que se está visualizando
             updateRegistrosToCurrentMonth(previousRegistros, targetMonth, targetYear, `${previousMonthName} ${previousYear}`);
         }
 
@@ -1238,29 +1189,24 @@
             console.log('🔄 Registros origen:', sourceRegistros.length);
             console.log('🔄 Mes destino:', getMonthName(targetMonth), targetYear);
             
-            // Validar que los registros origen sean válidos
             if (!sourceRegistros || sourceRegistros.length === 0) {
                 showAlert('⚠️ No hay registros válidos para actualizar', 'warning');
                 return;
             }
             
-            // Crear nuevos registros basados en los anteriores (COPIANDO TODOS LOS DATOS)
             const timestamp = Date.now();
             const nuevosRegistros = sourceRegistros.map((registro, index) => {
-                // Validar que el registro origen tenga los campos mínimos
                 if (!registro.ubicacion || !registro.tipo) {
                     console.warn('⚠️ Registro origen incompleto:', registro);
                     return null;
                 }
                 
-                // Crear un nuevo registro COPIANDO TODOS LOS DATOS del mes anterior
                 const nuevoRegistro = {
-                    id: timestamp + index + Math.floor(Math.random() * 10000), // ID único más robusto
+                    id: timestamp + index + Math.floor(Math.random() * 10000),
                     fecha: new Date().toISOString(),
-                    mes: parseInt(targetMonth), // Asegurar que sea número
-                    año: parseInt(targetYear), // Asegurar que sea número
+                    mes: parseInt(targetMonth),
+                    año: parseInt(targetYear),
                     
-                    // COPIAR TODOS LOS DATOS DEL REGISTRO ANTERIOR
                     ubicacion: String(registro.ubicacion).trim(),
                     tipo: registro.tipo || 'CO2',
                     capacidad: registro.capacidad || '6',
@@ -1273,10 +1219,9 @@
                     difusor: registro.difusor || 'optimo',
                     estado_fisico: registro.estado_fisico || 'optimo',
                     
-                    // Metadatos
                     actualizadoDe: sourceName,
                     fechaActualizacion: new Date().toISOString(),
-                    copiaDe: `${getMonthName(registro.mes)} ${registro.año}` // Referencia al mes original
+                    copiaDe: `${getMonthName(registro.mes)} ${registro.año}`
                 };
                 
                 console.log('🔄 Registro copiado completo:', {
@@ -1289,18 +1234,16 @@
                 });
                 
                 return nuevoRegistro;
-            }).filter(registro => registro !== null); // Filtrar registros nulos
+            }).filter(registro => registro !== null);
             
             if (nuevosRegistros.length === 0) {
                 showAlert('⚠️ No se pudieron crear registros válidos', 'warning');
                 return;
             }
             
-            // Obtener registros existentes
             let todosLosRegistros = getRegistros();
             console.log('🔄 Registros existentes antes de actualización:', todosLosRegistros.length);
             
-            // Verificar que no haya duplicados por ubicación en el mismo mes
             const registrosExistentesDelMes = todosLosRegistros.filter(r => 
                 parseInt(r.mes) === parseInt(targetMonth) && parseInt(r.año) === parseInt(targetYear)
             );
@@ -1329,11 +1272,9 @@
                 }
             }
             
-            // Agregar los nuevos registros
             todosLosRegistros = todosLosRegistros.concat(nuevosRegistrosFiltrados);
             console.log('🔄 Total registros después de actualización:', todosLosRegistros.length);
             
-            // Validar antes de guardar
             const registrosValidos = todosLosRegistros.filter(r => 
                 r && r.id && r.ubicacion && r.tipo && 
                 typeof r.mes === 'number' && typeof r.año === 'number'
@@ -1344,12 +1285,10 @@
                 todosLosRegistros = registrosValidos;
             }
             
-            // Guardar en localStorage con validación
             try {
                 localStorage.setItem('extintorRegistros', JSON.stringify(todosLosRegistros));
                 console.log('✅ Registros guardados exitosamente');
                 
-                // Verificar que se guardó correctamente
                 const verificacion = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
                 if (verificacion.length !== todosLosRegistros.length) {
                     throw new Error('Error en la verificación del guardado');
@@ -1361,7 +1300,6 @@
                 return;
             }
             
-            // Actualizar la interfaz inmediatamente
             loadRegistros();
             updateStats();
             
@@ -1371,7 +1309,6 @@
                 console.log(`✅ Carga automática: ${nuevosRegistrosFiltrados.length} extintores copiados desde ${sourceName} a ${getMonthName(targetMonth)} ${targetYear}`);
             }
             
-            // Mostrar detalles de lo que se actualizó
             console.log('✅ Extintores actualizados exitosamente:', nuevosRegistrosFiltrados.map(r => ({
                 id: r.id,
                 ubicacion: r.ubicacion,
@@ -1385,7 +1322,6 @@
         function updateExistingRegistrosFromPrevious(targetMonth, targetYear) {
             console.log('🔄 Actualizando registros existentes...');
             
-            // Buscar registros del mes anterior al mes objetivo
             let previousMonth = targetMonth - 1;
             let previousYear = targetYear;
             
@@ -1405,11 +1341,9 @@
             let registrosActualizados = 0;
             let registrosNuevos = 0;
             
-            // Actualizar registros existentes y agregar nuevos
             previousRegistros.forEach(prevRegistro => {
                 if (!prevRegistro.ubicacion || !prevRegistro.tipo) return;
                 
-                // Buscar si existe un registro con la misma ubicación en el mes objetivo
                 const existingIndex = todosLosRegistros.findIndex(r => 
                     parseInt(r.mes) === parseInt(targetMonth) && 
                     parseInt(r.año) === parseInt(targetYear) &&
@@ -1417,16 +1351,13 @@
                 );
                 
                 if (existingIndex !== -1) {
-                    // SOBRESCRIBIR COMPLETAMENTE el registro existente con TODOS los datos del mes anterior
                     const registroExistente = todosLosRegistros[existingIndex];
                     todosLosRegistros[existingIndex] = {
-                        // Mantener solo ID y fecha de creación original
                         id: registroExistente.id,
                         fecha: registroExistente.fecha,
                         mes: parseInt(targetMonth),
                         año: parseInt(targetYear),
                         
-                        // COPIAR TODOS LOS DATOS DEL MES ANTERIOR
                         ubicacion: String(prevRegistro.ubicacion).trim(),
                         tipo: prevRegistro.tipo,
                         capacidad: prevRegistro.capacidad,
@@ -1439,7 +1370,6 @@
                         difusor: prevRegistro.difusor || 'optimo',
                         estado_fisico: prevRegistro.estado_fisico || 'optimo',
                         
-                        // Metadatos
                         actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
                         fechaActualizacionCompleta: new Date().toISOString(),
                         copiaDe: `${getMonthName(previousMonth)} ${previousYear}`
@@ -1447,14 +1377,12 @@
                     registrosActualizados++;
                     console.log('🔄 Registro completamente actualizado:', prevRegistro.ubicacion);
                 } else {
-                    // Crear nuevo registro COPIANDO TODOS LOS DATOS del anterior
                     const nuevoRegistro = {
                         id: Date.now() + Math.floor(Math.random() * 10000),
                         fecha: new Date().toISOString(),
                         mes: parseInt(targetMonth),
                         año: parseInt(targetYear),
                         
-                        // COPIAR TODOS LOS DATOS DEL REGISTRO ANTERIOR
                         ubicacion: String(prevRegistro.ubicacion).trim(),
                         tipo: prevRegistro.tipo,
                         capacidad: prevRegistro.capacidad,
@@ -1467,7 +1395,6 @@
                         difusor: prevRegistro.difusor || 'optimo',
                         estado_fisico: prevRegistro.estado_fisico || 'optimo',
                         
-                        // Metadatos
                         actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
                         fechaActualizacion: new Date().toISOString(),
                         copiaDe: `${getMonthName(previousMonth)} ${previousYear}`
@@ -1479,11 +1406,9 @@
                 }
             });
             
-            // Guardar cambios
             try {
                 localStorage.setItem('extintorRegistros', JSON.stringify(todosLosRegistros));
                 
-                // Actualizar interfaz inmediatamente
                 loadRegistros();
                 updateStats();
                 
@@ -1507,7 +1432,6 @@
         function updateStats() {
             const registros = getRegistrosByMonth(statsDate.getMonth(), statsDate.getFullYear());
             
-            // Contadores básicos
             const total = registros.length;
             const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
             const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
@@ -1518,7 +1442,6 @@
             document.getElementById('extintoresOptimos').textContent = optimos;
             document.getElementById('extintoresMalos').textContent = malos;
             
-            // Distribución por tipo
             const co2Count = registros.filter(r => r.tipo === 'CO2').length;
             const pqsCount = registros.filter(r => r.tipo === 'PQS').length;
             
@@ -1530,7 +1453,6 @@
             document.getElementById('co2Progress').style.width = `${co2Percentage}%`;
             document.getElementById('pqsProgress').style.width = `${pqsPercentage}%`;
             
-            // Alertas
             updateAlerts(registros);
         }
 
@@ -1538,7 +1460,6 @@
             const alertsContainer = document.getElementById('alertsList');
             const alerts = [];
             
-            // Verificar caducidades próximas (próximos 30 días)
             const today = new Date();
             const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000));
             
@@ -1576,19 +1497,17 @@
             }
         }
 
-        // Función para detectar si estamos en una APK Android
         function isAndroidAPK() {
             const userAgent = navigator.userAgent.toLowerCase();
             const isAndroid = userAgent.includes('android');
             const isWebView = userAgent.includes('wv') || 
-                            window.navigator.standalone === false ||
-                            !window.chrome ||
-                            typeof window.orientation !== 'undefined';
+                              window.navigator.standalone === false ||
+                              !window.chrome ||
+                              typeof window.orientation !== 'undefined';
             
             return isAndroid && isWebView;
         }
 
-        // Función para generar y mostrar vista previa del PDF
         function generateAndPreviewPDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1603,12 +1522,10 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Generar el PDF (misma lógica que generatePDF)
                 const pdfData = generatePDFContent(doc, registros);
                 currentPDFData = pdfData;
                 currentPDFBlob = doc.output('blob');
                 
-                // Mostrar vista previa en HTML
                 showPDFPreview(pdfData);
                 
             } catch (error) {
@@ -1617,19 +1534,16 @@
             }
         }
 
-        // Función para generar el contenido del PDF (reutilizable)
         function generatePDFContent(doc, registros) {
             const pageWidth = doc.internal.pageSize.width;
             const margin = 20;
             let yPosition = margin;
             
-            // Título
             doc.setFontSize(20);
             doc.setFont(undefined, 'bold');
             doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 15;
             
-            // Fecha del reporte
             const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             doc.setFontSize(14);
@@ -1638,7 +1552,6 @@
             doc.text(monthYear, pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 20;
             
-            // Resumen estadístico
             doc.setFontSize(16);
             doc.setFont(undefined, 'bold');
             doc.text('Resumen Estadístico', margin, yPosition);
@@ -1660,7 +1573,6 @@
             doc.text(`Mal estado: ${malos}`, margin, yPosition);
             yPosition += 20;
             
-            // Detalle de registros
             doc.setFontSize(16);
             doc.setFont(undefined, 'bold');
             doc.text('Detalle de Registros', margin, yPosition);
@@ -1694,12 +1606,10 @@
                 yPosition += 10;
             });
             
-            // Pie de página
             const today = new Date();
             doc.setFontSize(10);
             doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
             
-            // Retornar datos para la vista previa
             return {
                 title: 'Reporte Mensual de Extintores',
                 monthYear: monthYear,
@@ -1713,72 +1623,35 @@
             };
         }
 
-        // Función para mostrar la vista previa en HTML
+        // --- FUNCIÓN ACTUALIZADA ---
         function showPDFPreview(pdfData) {
             const previewContainer = document.getElementById('pdfPreview');
             const viewer = document.getElementById('pdfViewer');
             
-            let previewHTML = `
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <h2 style="color: #495057; margin: 0;">${pdfData.title}</h2>
-                    <h3 style="color: #6c757d; margin: 5px 0;">${pdfData.monthYear}</h3>
-                </div>
-                
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4 style="color: #495057; margin-top: 0;">📊 Resumen Estadístico</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
-                        <div><strong>Total revisados:</strong> ${pdfData.totalExtintores}</div>
-                        <div><strong>Estado excelente:</strong> ${pdfData.excelentes}</div>
-                        <div><strong>Estado óptimo:</strong> ${pdfData.optimos}</div>
-                        <div><strong>Mal estado:</strong> ${pdfData.malos}</div>
-                    </div>
-                </div>
-                
-                <h4 style="color: #495057;">📋 Detalle de Registros</h4>
-            `;
+            previewContainer.innerHTML = ''; 
+
+            if (!currentPDFBlob) {
+                showAlert('⚠️ No se encontró el contenido del PDF para visualizar.', 'warning');
+                previewContainer.innerHTML = '<p>Error al cargar el visor de PDF.</p>';
+                return;
+            }
+
+            const pdfUrl = URL.createObjectURL(currentPDFBlob);
+
+            const embed = document.createElement('embed');
+            embed.src = pdfUrl;
+            embed.type = 'application/pdf';
+            embed.style.width = '100%';
+            embed.style.height = '100%';
+
+            previewContainer.appendChild(embed);
             
-            pdfData.registros.forEach((registro, index) => {
-                const statusColor = registro.estado_fisico === 'excelente' ? '#28a745' : 
-                                  registro.estado_fisico === 'optimo' ? '#ffc107' : '#dc3545';
-                
-                previewHTML += `
-                    <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: white;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <strong style="color: #495057;">${index + 1}. ${registro.ubicacion}</strong>
-                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
-                                ${registro.estado_fisico.replace('_', ' ').toUpperCase()}
-                            </span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #6c757d;">
-                            <div><strong>Tipo:</strong> ${registro.tipo}</div>
-                            <div><strong>Capacidad:</strong> ${registro.capacidad} kg</div>
-                            <div><strong>Manómetro:</strong> ${registro.manometro.replace('_', ' ')}</div>
-                            <div><strong>Mangueras:</strong> ${registro.mangueras}</div>
-                            <div><strong>Señalización:</strong> ${registro.senalizacion ? '✅' : '❌'}</div>
-                            <div><strong>Seguros:</strong> ${registro.seguros ? '✅' : '❌'}</div>
-                            ${registro.tipo === 'PQS' ? `<div><strong>Sello Seguridad:</strong> ${registro.selloSeguridad ? '✅' : '❌'}</div>` : ''}
-                            <div><strong>Caducidad:</strong> ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}</div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            previewHTML += `
-                <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 11px; color: #6c757d;">
-                    Generado el ${pdfData.generatedDate} - ExtintorCheck Pro
-                </div>
-            `;
-            
-            previewContainer.innerHTML = previewHTML;
             viewer.style.display = 'block';
-            
-            // Scroll hacia el visor
             viewer.scrollIntoView({ behavior: 'smooth' });
             
             showAlert('👁️ Vista previa generada exitosamente', 'success');
         }
 
-        // Función para generar URL temporal del PDF
         function generatePDFURL() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1793,21 +1666,17 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Generar el PDF
                 const pdfData = generatePDFContent(doc, registros);
                 const pdfBlob = doc.output('blob');
                 
-                // Limpiar URL anterior si existe
                 if (currentPDFURL) {
                     URL.revokeObjectURL(currentPDFURL);
                 }
                 
-                // Crear nueva URL temporal
                 currentPDFURL = URL.createObjectURL(pdfBlob);
                 currentPDFData = pdfData;
                 currentPDFBlob = pdfBlob;
                 
-                // Mostrar modal con la URL
                 showPDFURLModal(currentPDFURL, pdfData.fileName);
                 
             } catch (error) {
@@ -1816,7 +1685,6 @@
             }
         }
 
-        // Función para abrir PDF en navegador externo
         function openInExternalBrowser() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1831,26 +1699,19 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Generar el PDF
                 const pdfData = generatePDFContent(doc, registros);
                 const pdfBlob = doc.output('blob');
                 
-                // Crear URL temporal
                 const pdfUrl = URL.createObjectURL(pdfBlob);
                 
-                // Abrir en nueva pestaña/ventana
                 const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
                 
                 if (newWindow) {
                     showAlert('🌐 PDF abierto en nueva pestaña', 'success');
                     
-                    // Limpiar URL después de un tiempo
                     setTimeout(() => {
                         URL.revokeObjectURL(pdfUrl);
-                    }, 30000); // 30 segundos
-                } else {
-                    // Si el popup fue bloqueado, mostrar URL manual
-                    showPDFURLModal(pdfUrl, pdfData.fileName, true);
+                    }, 30000);
                 }
                 
             } catch (error) {
@@ -1859,31 +1720,18 @@
             }
         }
 
-        // Función para mostrar modal con URL del PDF
         function showPDFURLModal(url, fileName, isBlocked = false) {
-            // Crear modal
             const modal = document.createElement('div');
             modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); display: flex; align-items: center;
+                justify-content: center; z-index: 10000;
             `;
             
             const modalContent = document.createElement('div');
             modalContent.style.cssText = `
-                background: white;
-                padding: 20px;
-                border-radius: 12px;
-                max-width: 90%;
-                width: 400px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                background: white; padding: 20px; border-radius: 12px;
+                max-width: 90%; width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             `;
             
             modalContent.innerHTML = `
@@ -1928,18 +1776,15 @@
             modal.appendChild(modalContent);
             document.body.appendChild(modal);
             
-            // Cerrar modal al hacer clic fuera
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     closePDFURLModal();
                 }
             });
             
-            // Guardar referencia del modal
             window.currentPDFModal = modal;
         }
 
-        // Función para copiar URL del PDF
         function copyPDFURL(url) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(url).then(() => {
@@ -1952,7 +1797,6 @@
             }
         }
 
-        // Función de respaldo para copiar URL
         function fallbackCopyURL(url) {
             const textArea = document.createElement('textarea');
             textArea.value = url;
@@ -1973,7 +1817,6 @@
             document.body.removeChild(textArea);
         }
 
-        // Función para abrir URL del PDF
         function openPDFURL(url) {
             const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
             if (newWindow) {
@@ -1984,7 +1827,6 @@
             }
         }
 
-        // Función para cerrar modal de URL
         function closePDFURLModal() {
             if (window.currentPDFModal) {
                 document.body.removeChild(window.currentPDFModal);
@@ -1992,7 +1834,6 @@
             }
         }
 
-        // Generación de PDF con soporte para APK Android (versión simplificada)
         function generatePDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -2007,47 +1848,37 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Usar la función reutilizable para generar contenido
                 const pdfData = generatePDFContent(doc, registros);
                 
-                // Verificar si estamos en una APK Android
                 if (isAndroidAPK()) {
-                    // Para APK Android: abrir en navegador externo
                     const pdfBlob = doc.output('blob');
                     const pdfUrl = URL.createObjectURL(pdfBlob);
                     
-                    // Crear enlace temporal para abrir en navegador
                     const tempLink = document.createElement('a');
                     tempLink.href = pdfUrl;
                     tempLink.download = pdfData.fileName;
                     tempLink.target = '_blank';
                     tempLink.rel = 'noopener noreferrer';
                     
-                    // Intentar abrir en navegador externo
                     try {
-                        // Método 1: Abrir directamente en navegador
                         window.open(pdfUrl, '_blank', 'noopener,noreferrer');
                         
-                        // Método 2: Crear enlace de descarga como respaldo
                         document.body.appendChild(tempLink);
                         tempLink.click();
                         document.body.removeChild(tempLink);
                         
                         showAlert('📱 PDF abierto en navegador para descarga', 'success');
                         
-                        // Limpiar URL después de un tiempo
                         setTimeout(() => {
                             URL.revokeObjectURL(pdfUrl);
                         }, 10000);
                         
                     } catch (error) {
                         console.error('Error al abrir en navegador:', error);
-                        // Fallback: descarga normal
                         doc.save(pdfData.fileName);
                         showAlert('📄 PDF descargado (método alternativo)', 'success');
                     }
                 } else {
-                    // Para navegadores normales: descarga directa
                     doc.save(pdfData.fileName);
                     showAlert('📄 Reporte PDF descargado exitosamente', 'success');
                 }
@@ -2058,10 +1889,8 @@
             }
         }
 
-        // Funciones del gestor de PDFs
         function closePDFViewer() {
             document.getElementById('pdfViewer').style.display = 'none';
-            // Limpiar URL si existe
             if (currentPDFURL) {
                 URL.revokeObjectURL(currentPDFURL);
                 currentPDFURL = null;
@@ -2070,7 +1899,6 @@
             currentPDFBlob = null;
         }
 
-        // Función para generar URL del PDF actual en el visor
         function generateCurrentPDFURL() {
             if (!currentPDFBlob || !currentPDFData) {
                 showAlert('⚠️ No hay PDF cargado para generar URL', 'warning');
@@ -2078,15 +1906,12 @@
             }
 
             try {
-                // Limpiar URL anterior si existe
                 if (currentPDFURL) {
                     URL.revokeObjectURL(currentPDFURL);
                 }
                 
-                // Crear nueva URL temporal
                 currentPDFURL = URL.createObjectURL(currentPDFBlob);
                 
-                // Mostrar modal con la URL
                 showPDFURLModal(currentPDFURL, currentPDFData.fileName);
                 
             } catch (error) {
@@ -2095,7 +1920,6 @@
             }
         }
 
-        // Función para abrir PDF actual en navegador externo
         function openCurrentPDFInBrowser() {
             if (!currentPDFBlob || !currentPDFData) {
                 showAlert('⚠️ No hay PDF cargado para abrir', 'warning');
@@ -2103,22 +1927,16 @@
             }
 
             try {
-                // Crear URL temporal
                 const pdfUrl = URL.createObjectURL(currentPDFBlob);
                 
-                // Abrir en nueva pestaña/ventana
                 const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
                 
                 if (newWindow) {
                     showAlert('🌐 PDF abierto en nueva pestaña', 'success');
                     
-                    // Limpiar URL después de un tiempo
                     setTimeout(() => {
                         URL.revokeObjectURL(pdfUrl);
-                    }, 30000); // 30 segundos
-                } else {
-                    // Si el popup fue bloqueado, mostrar URL manual
-                    showPDFURLModal(pdfUrl, currentPDFData.fileName, true);
+                    }, 30000);
                 }
                 
             } catch (error) {
@@ -2135,7 +1953,6 @@
 
             try {
                 if (isAndroidAPK()) {
-                    // Para APK Android: abrir en navegador externo
                     const pdfUrl = URL.createObjectURL(currentPDFBlob);
                     const tempLink = document.createElement('a');
                     tempLink.href = pdfUrl;
@@ -2154,7 +1971,6 @@
                         URL.revokeObjectURL(pdfUrl);
                     }, 10000);
                 } else {
-                    // Para navegadores normales: descarga directa
                     const url = URL.createObjectURL(currentPDFBlob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -2176,7 +1992,6 @@
             }
 
             try {
-                // Convertir blob a base64 para almacenamiento
                 const reader = new FileReader();
                 reader.onload = function() {
                     const base64Data = reader.result.split(',')[1];
@@ -2188,13 +2003,11 @@
                         totalExtintores: currentPDFData.totalExtintores,
                         generatedDate: currentPDFData.generatedDate,
                         data: base64Data,
-                        size: Math.round(currentPDFBlob.size / 1024) // KB
+                        size: Math.round(currentPDFBlob.size / 1024)
                     };
                     
-                    // Obtener PDFs guardados
                     let savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
                     
-                    // Verificar si ya existe un PDF para este mes
                     const existingIndex = savedPDFs.findIndex(pdf => pdf.monthYear === currentPDFData.monthYear);
                     if (existingIndex !== -1) {
                         if (confirm(`Ya existe un PDF para ${currentPDFData.monthYear}. ¿Reemplazarlo?`)) {
@@ -2206,7 +2019,6 @@
                         savedPDFs.push(savedPDF);
                     }
                     
-                    // Limitar a máximo 10 PDFs para no sobrecargar localStorage
                     if (savedPDFs.length > 10) {
                         savedPDFs = savedPDFs.slice(-10);
                     }
@@ -2256,7 +2068,6 @@
                 return;
             }
             
-            // Ordenar por fecha de generación (más reciente primero)
             savedPDFs.sort((a, b) => b.id - a.id);
             
             container.innerHTML = savedPDFs.map(pdf => `
@@ -2304,7 +2115,6 @@
             }
             
             try {
-                // Convertir base64 de vuelta a blob
                 const byteCharacters = atob(pdf.data);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -2313,20 +2123,18 @@
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
-                // Crear datos simulados para la vista previa
                 const mockPDFData = {
                     title: 'Reporte Mensual de Extintores',
                     monthYear: pdf.monthYear,
                     totalExtintores: pdf.totalExtintores,
                     fileName: pdf.fileName,
                     generatedDate: pdf.generatedDate,
-                    registros: [] // Los registros no se guardan para ahorrar espacio
+                    registros: []
                 };
                 
                 currentPDFData = mockPDFData;
                 currentPDFBlob = blob;
                 
-                // Mostrar vista previa simplificada
                 const previewContainer = document.getElementById('pdfPreview');
                 previewContainer.innerHTML = `
                     <div style="text-align: center; margin-bottom: 20px;">
@@ -2375,7 +2183,6 @@
             }
             
             try {
-                // Convertir base64 de vuelta a blob
                 const byteCharacters = atob(pdf.data);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -2385,7 +2192,6 @@
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
                 if (isAndroidAPK()) {
-                    // Para APK Android: abrir en navegador externo
                     const pdfUrl = URL.createObjectURL(blob);
                     const tempLink = document.createElement('a');
                     tempLink.href = pdfUrl;
@@ -2404,7 +2210,6 @@
                         URL.revokeObjectURL(pdfUrl);
                     }, 10000);
                 } else {
-                    // Para navegadores normales: descarga directa
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -2444,7 +2249,6 @@
             }
             
             try {
-                // Convertir base64 de vuelta a blob
                 const byteCharacters = atob(pdf.data);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -2453,13 +2257,10 @@
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
-                // Crear URL temporal
                 const pdfUrl = URL.createObjectURL(blob);
                 
-                // Mostrar modal con la URL
                 showPDFURLModal(pdfUrl, pdf.fileName);
                 
-                // Limpiar URL después de 30 minutos
                 setTimeout(() => {
                     URL.revokeObjectURL(pdfUrl);
                 }, 30 * 60 * 1000);
@@ -2480,7 +2281,6 @@
             }
             
             try {
-                // Convertir base64 de vuelta a blob
                 const byteCharacters = atob(pdf.data);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -2489,22 +2289,16 @@
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
-                // Crear URL temporal
                 const pdfUrl = URL.createObjectURL(blob);
                 
-                // Abrir en nueva pestaña/ventana
                 const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer');
                 
                 if (newWindow) {
                     showAlert('🌐 PDF abierto en nueva pestaña', 'success');
                     
-                    // Limpiar URL después de un tiempo
                     setTimeout(() => {
                         URL.revokeObjectURL(pdfUrl);
-                    }, 30000); // 30 segundos
-                } else {
-                    // Si el popup fue bloqueado, mostrar URL manual
-                    showPDFURLModal(pdfUrl, pdf.fileName, true);
+                    }, 30000);
                 }
                 
             } catch (error) {
@@ -2584,10 +2378,8 @@
                 return;
             }
             
-            // Obtener archivos existentes
             let archivedMonths = JSON.parse(localStorage.getItem('archivedMonths') || '[]');
             
-            // Crear archivo del mes
             const archivo = {
                 mes: currentMonth,
                 año: currentYear,
@@ -2601,7 +2393,6 @@
                 }
             };
             
-            // Verificar si ya existe un archivo para este mes
             const existingIndex = archivedMonths.findIndex(a => a.mes === currentMonth && a.año === currentYear);
             if (existingIndex !== -1) {
                 archivedMonths[existingIndex] = archivo;
@@ -2609,7 +2400,6 @@
                 archivedMonths.push(archivo);
             }
             
-            // Guardar archivo
             localStorage.setItem('archivedMonths', JSON.stringify(archivedMonths));
             
             showAlert(`📦 Mes ${getMonthName(currentMonth)} ${currentYear} archivado exitosamente`, 'success');
@@ -2623,7 +2413,6 @@
             return months[monthIndex];
         }
 
-        // Utilidades
         function showAlert(message, type) {
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type}`;
@@ -2642,8 +2431,6 @@
                 alertDiv.remove();
             }, 3000);
         }
-
-
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'991523b7c211267c',t:'MTc2MDkyNzkxMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
