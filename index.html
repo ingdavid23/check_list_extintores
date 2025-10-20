@@ -267,7 +267,7 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient( #ff6b6b, #ff6b6b);
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
             transition: width 0.3s ease;
         }
 
@@ -585,24 +585,13 @@
             <div class="stat-card" style="margin-bottom: 20px;">
                 <h3 style="margin-top: 0; color: #495057;">📄 Gestor de Reportes</h3>
                 <p style="color: #6c757d; margin-bottom: 20px;">
-                    Genera, visualiza y descarga reportes de tus inspecciones mensuales.
+                    Genera y visualiza reportes de tus inspecciones mensuales en formato de texto.
                 </p>
-                <div style="text-align: center;">
-                    <button onclick="generateAndPreviewReport()" class="btn btn-primary">
-                        👁️ Generar y Visualizar
-                    </button>
-                  </div>
-
-            <div id="pdfManager" class="stat-card" style="display: none; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #495057;">📁 PDFs Guardados</h3>
-                    <button onclick="clearAllPDFs()" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
-                        🗑️ Limpiar Todo
-                    </button>
-                </div>
-                <div id="pdfList"></div>
+                <button onclick="generateAndPreviewReport()" class="btn btn-primary btn-block">
+                    👁️ Generar y Visualizar
+                </button>
             </div>
-
+            
             <div id="reportViewer" class="stat-card" style="display: none; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0; color: #495057;">👁️ Vista Previa (Texto)</h3>
@@ -617,6 +606,7 @@
                     📋 Copiar Texto del Reporte
                 </button>
             </div>
+
             <div class="stat-card">
                 <h3 style="margin-top: 0; color: #495057;">🔄 Gestión Mensual</h3>
                 <p style="color: #6c757d; margin-bottom: 20px;">
@@ -1499,7 +1489,7 @@
 
         function generateTXTContent(registros) {
             const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             const monthYear = `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
             const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
             const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
@@ -1597,7 +1587,7 @@
             yPosition += 15;
             
             const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             doc.setFontSize(14);
             doc.setFont(undefined, 'normal');
             const monthYear = `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
@@ -1983,13 +1973,18 @@
 
         function updatePDFCount() {
             const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
-            document.getElementById('pdfCount').textContent = savedPDFs.length;
+            const countSpan = document.getElementById('pdfCount');
+            if (countSpan) {
+               countSpan.textContent = savedPDFs.length;
+            }
         }
 
         function loadPDFList() {
             const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
             const container = document.getElementById('pdfList');
             
+            if (!container) return;
+
             if (savedPDFs.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: #6c757d;">
