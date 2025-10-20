@@ -267,7 +267,7 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+            background: linear-gradient( #ff6b6b, #ff6b6b);
             transition: width 0.3s ease;
         }
 
@@ -587,24 +587,11 @@
                 <p style="color: #6c757d; margin-bottom: 20px;">
                     Genera, visualiza y descarga reportes de tus inspecciones mensuales.
                 </p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="text-align: center;">
                     <button onclick="generateAndPreviewReport()" class="btn btn-primary">
                         👁️ Generar y Visualizar
                     </button>
-                    <button onclick="generatePDF()" class="btn btn-success">
-                        📥 Descargar PDF
-                    </button>
-                    <button onclick="generatePDFURL()" class="btn" style="background: #6f42c1; color: white;">
-                        🔗 URL de PDF
-                    </button>
-                    <button onclick="openInExternalBrowser()" class="btn" style="background: #fd7e14; color: white;">
-                        🌐 Abrir PDF
-                    </button>
-                </div>
-                <button onclick="togglePDFManager()" class="btn btn-secondary btn-block">
-                    📁 Ver PDFs Guardados (<span id="pdfCount">0</span>)
-                </button>
-            </div>
+                  </div>
 
             <div id="pdfManager" class="stat-card" style="display: none; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
