@@ -376,11 +376,6 @@
 
         <!-- Tab: Check-list -->
         <div id="checklist" class="tab-content active">
-            <div class="month-selector">
-                <button class="month-nav" onclick="changeMonth(-1)">‹</button>
-                <div class="current-month" id="currentMonth"></div>
-                <button class="month-nav" onclick="changeMonth(1)">›</button>
-            </div>
 
             <form id="extinguisherForm">
                 <div class="form-group">
@@ -652,8 +647,8 @@
                 radio.addEventListener('change', toggleSelloSeguridad);
             });
             
-            // Actualizar formularios mensualmente
-            checkMonthlyReset();
+            // Verificar y cargar automáticamente registros del mes actual
+            autoLoadCurrentMonthRegistros();
         });
 
         // Función para mostrar/ocultar sello de seguridad
@@ -699,8 +694,6 @@
                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
             ];
             
-            document.getElementById('currentMonth').textContent = 
-                `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
             document.getElementById('registrosMonth').textContent = 
                 `${months[registrosDate.getMonth()]} ${registrosDate.getFullYear()}`;
             document.getElementById('statsMonth').textContent = 
@@ -709,10 +702,7 @@
                 `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
         }
 
-        function changeMonth(direction) {
-            currentDate.setMonth(currentDate.getMonth() + direction);
-            updateMonthDisplays();
-        }
+
 
         function changeRegistrosMonth(direction) {
             registrosDate.setMonth(registrosDate.getMonth() + direction);
@@ -739,39 +729,67 @@
             const formData = new FormData(form);
             const editingId = form.dataset.editingId;
             
+            // Validar que todos los campos requeridos estén completos
+            const tipoSeleccionado = formData.get('tipo');
+            const manometroSeleccionado = formData.get('manometro');
+            const manguerasSeleccionado = formData.get('mangueras');
+            const difusorSeleccionado = formData.get('difusor');
+            const estadoFisicoSeleccionado = formData.get('estado_fisico');
+            
+            if (!tipoSeleccionado || !manometroSeleccionado || !manguerasSeleccionado || 
+                !difusorSeleccionado || !estadoFisicoSeleccionado) {
+                showAlert('⚠️ Por favor completa todos los campos requeridos', 'warning');
+                return;
+            }
+            
             const registro = {
                 id: editingId ? parseInt(editingId) : Date.now(),
-                fecha: editingId ? getRegistros().find(r => r.id == editingId).fecha : new Date().toISOString(),
-                fechaActualizacion: editingId ? new Date().toISOString() : undefined,
-                mes: currentDate.getMonth(),
-                año: currentDate.getFullYear(),
-                ubicacion: document.getElementById('ubicacion').value || '',
-                tipo: formData.get('tipo'),
+                ubicacion: document.getElementById('ubicacion').value.trim() || '',
+                tipo: tipoSeleccionado,
                 capacidad: document.getElementById('capacidad').value,
                 senalizacion: document.getElementById('senalizacion').checked,
-                manometro: formData.get('manometro'),
-                mangueras: formData.get('mangueras'),
+                manometro: manometroSeleccionado,
+                mangueras: manguerasSeleccionado,
                 seguros: document.getElementById('seguros').checked,
                 selloSeguridad: document.getElementById('selloSeguridad').checked,
-                difusor: formData.get('difusor'),
+                difusor: difusorSeleccionado,
                 caducidad: document.getElementById('caducidad').value || '',
-                estado_fisico: formData.get('estado_fisico')
+                estado_fisico: estadoFisicoSeleccionado
             };
+            
+            // Solo asignar mes y año para NUEVOS registros, NO para ediciones
+            if (!editingId) {
+                const today = new Date();
+                registro.mes = today.getMonth();
+                registro.año = today.getFullYear();
+                registro.fecha = new Date().toISOString();
+            }
             
             if (editingId) {
                 // Actualizar registro existente
-                updateRegistro(registro);
-                showAlert('✅ Registro actualizado exitosamente', 'success');
-                
-                // Salir del modo edición
-                cancelEdit();
+                const success = updateRegistro(registro);
+                if (success) {
+                    showAlert('✅ Registro actualizado exitosamente', 'success');
+                    // Salir del modo edición
+                    cancelEdit();
+                } else {
+                    showAlert('❌ Error al actualizar el registro', 'warning');
+                }
             } else {
-                // Guardar nuevo registro
-                saveRegistro(registro);
-                showAlert('✅ Registro guardado exitosamente', 'success');
+                // Guardar nuevo registro (fecha ya asignada arriba)
+                const guardadoExitoso = saveRegistro(registro);
                 
-                // Limpiar formulario
-                form.reset();
+                if (guardadoExitoso) {
+                    showAlert('✅ Registro guardado exitosamente', 'success');
+                    
+                    // Limpiar formulario
+                    form.reset();
+                    // Ocultar sello de seguridad al limpiar
+                    document.getElementById('selloSeguridadGroup').style.display = 'none';
+                } else {
+                    showAlert('❌ Error al guardar el registro', 'warning');
+                    return; // No limpiar el formulario si hubo error
+                }
             }
             
             // Actualizar estadísticas
@@ -779,9 +797,56 @@
         }
 
         function saveRegistro(registro) {
-            let registros = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
-            registros.push(registro);
-            localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+            console.log('💾 Guardando registro:', registro);
+            
+            // Validar que el registro tenga los campos requeridos
+            if (!registro.ubicacion || !registro.tipo || typeof registro.mes !== 'number' || typeof registro.año !== 'number') {
+                console.error('❌ Registro inválido:', registro);
+                showAlert('❌ Error: Registro con datos incompletos', 'warning');
+                return false;
+            }
+            
+            try {
+                let registros = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
+                console.log('💾 Registros existentes:', registros.length);
+                
+                // Asegurar que el registro tenga un ID único
+                if (!registro.id) {
+                    registro.id = Date.now() + Math.floor(Math.random() * 10000);
+                }
+                
+                // Verificar que no exista un registro con el mismo ID
+                const existeId = registros.some(r => r.id === registro.id);
+                if (existeId) {
+                    registro.id = Date.now() + Math.floor(Math.random() * 10000);
+                    console.log('💾 ID duplicado detectado, generando nuevo ID:', registro.id);
+                }
+                
+                registros.push(registro);
+                localStorage.setItem('extintorRegistros', JSON.stringify(registros));
+                
+                // Verificar que se guardó correctamente
+                const verificacion = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
+                const registroGuardado = verificacion.find(r => r.id === registro.id);
+                
+                if (!registroGuardado) {
+                    throw new Error('El registro no se guardó correctamente');
+                }
+                
+                console.log('✅ Registro guardado exitosamente:', {
+                    id: registro.id,
+                    ubicacion: registro.ubicacion,
+                    mes: registro.mes,
+                    año: registro.año
+                });
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error al guardar registro:', error);
+                showAlert('❌ Error al guardar el registro', 'warning');
+                return false;
+            }
         }
 
         function updateRegistro(registroActualizado) {
@@ -789,10 +854,34 @@
             const index = registros.findIndex(r => r.id == registroActualizado.id);
             
             if (index !== -1) {
-                registros[index] = registroActualizado;
+                const registroOriginal = registros[index];
+                
+                // MANTENER el mes y año del registro original para evitar duplicaciones
+                // Solo actualizar los datos del extintor, NO la ubicación temporal
+                registros[index] = {
+                    ...registros[index], // Mantener campos existentes
+                    ...registroActualizado, // Sobrescribir con nuevos valores
+                    id: registros[index].id, // Mantener ID original
+                    fecha: registros[index].fecha, // Mantener fecha de creación original
+                    mes: registros[index].mes, // MANTENER mes original (CRÍTICO)
+                    año: registros[index].año, // MANTENER año original (CRÍTICO)
+                    fechaActualizacion: new Date().toISOString() // Actualizar fecha de modificación
+                };
+                
+                console.log('✏️ Registro actualizado correctamente:', {
+                    id: registros[index].id,
+                    ubicacion: registros[index].ubicacion,
+                    mesOriginal: registroOriginal.mes,
+                    añoOriginal: registroOriginal.año,
+                    mesMantenido: registros[index].mes,
+                    añoMantenido: registros[index].año
+                });
+                
                 localStorage.setItem('extintorRegistros', JSON.stringify(registros));
                 loadRegistros(); // Recargar la lista
+                return true;
             }
+            return false;
         }
 
         function getRegistros() {
@@ -816,7 +905,7 @@
                         <h3>No hay registros</h3>
                         <p>No se encontraron registros para este mes.</p>
                         <button onclick="copyPreviousMonthRegistros()" class="btn btn-primary" style="margin-top: 15px;">
-                            📋 Copiar Extintores del Mes Anterior
+                            🔄 Actualizar desde Mes Anterior
                         </button>
                     </div>
                 `;
@@ -959,60 +1048,399 @@
             // Limpiar formulario
             form.reset();
             
+            // Ocultar sello de seguridad al cancelar
+            document.getElementById('selloSeguridadGroup').style.display = 'none';
+            document.getElementById('selloSeguridad').checked = false;
+            
             showAlert('❌ Edición cancelada', 'warning');
         }
 
-        function copyPreviousMonthRegistros() {
-            const currentMonth = registrosDate.getMonth();
-            const currentYear = registrosDate.getFullYear();
+        function autoLoadCurrentMonthRegistros() {
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
             
-            // Buscar registros del mes anterior
-            let previousMonth = currentMonth - 1;
-            let previousYear = currentYear;
+            console.log('🔍 Verificando registros para mes actual:', getMonthName(currentMonth), currentYear);
+            
+            // Verificar si ya existen registros en el mes actual
+            const existingRegistros = getRegistrosByMonth(currentMonth, currentYear);
+            
+            if (existingRegistros.length === 0) {
+                console.log('📅 No hay registros en el mes actual, buscando mes anterior...');
+                
+                // Buscar registros del mes anterior
+                let previousMonth = currentMonth - 1;
+                let previousYear = currentYear;
+                
+                if (previousMonth < 0) {
+                    previousMonth = 11;
+                    previousYear = currentYear - 1;
+                }
+                
+                const previousRegistros = getRegistrosByMonth(previousMonth, previousYear);
+                
+                if (previousRegistros.length > 0) {
+                    console.log(`🔄 Encontrados ${previousRegistros.length} registros en ${getMonthName(previousMonth)} ${previousYear}`);
+                    
+                    // Cargar automáticamente sin confirmación
+                    updateRegistrosToCurrentMonth(
+                        previousRegistros, 
+                        currentMonth, 
+                        currentYear, 
+                        `${getMonthName(previousMonth)} ${previousYear}`,
+                        true // Modo silencioso
+                    );
+                } else {
+                    console.log('⚠️ No se encontraron registros del mes anterior');
+                }
+            } else {
+                console.log(`✅ Ya existen ${existingRegistros.length} registros en el mes actual`);
+            }
+        }
+
+        function copyPreviousMonthRegistros() {
+            // Usar el mes que se está visualizando actualmente en la pestaña de registros
+            const targetMonth = registrosDate.getMonth();
+            const targetYear = registrosDate.getFullYear();
+            
+            console.log('🔍 Actualizando registros para mes visualizado:', getMonthName(targetMonth), targetYear);
+            
+            // Verificar si ya existen registros en el mes que se está visualizando
+            const existingRegistros = getRegistrosByMonth(targetMonth, targetYear);
+            if (existingRegistros.length > 0) {
+                if (!confirm(`Ya existen ${existingRegistros.length} registros en ${getMonthName(targetMonth)} ${targetYear}. ¿Deseas reemplazarlos con los datos del mes anterior?`)) {
+                    return;
+                }
+                // Si ya existen, actualizar los existentes
+                updateExistingRegistrosFromPrevious(targetMonth, targetYear);
+                return;
+            }
+            
+            // Buscar registros del mes anterior al mes que se está visualizando
+            let previousMonth = targetMonth - 1;
+            let previousYear = targetYear;
             
             if (previousMonth < 0) {
                 previousMonth = 11;
-                previousYear = currentYear - 1;
+                previousYear = targetYear - 1;
+            }
+            
+            console.log('🔍 Buscando en mes anterior:', getMonthName(previousMonth), previousYear);
+            
+            const previousRegistros = getRegistrosByMonth(previousMonth, previousYear);
+            
+            if (previousRegistros.length === 0) {
+                // Buscar en meses anteriores hasta encontrar registros
+                let searchMonth = previousMonth;
+                let searchYear = previousYear;
+                let foundRegistros = [];
+                let monthsSearched = 0;
+                
+                while (foundRegistros.length === 0 && monthsSearched < 12) {
+                    searchMonth--;
+                    monthsSearched++;
+                    
+                    if (searchMonth < 0) {
+                        searchMonth = 11;
+                        searchYear--;
+                    }
+                    
+                    foundRegistros = getRegistrosByMonth(searchMonth, searchYear);
+                    console.log(`🔍 Buscando en ${getMonthName(searchMonth)} ${searchYear}: ${foundRegistros.length} registros`);
+                }
+                
+                if (foundRegistros.length === 0) {
+                    showAlert('⚠️ No se encontraron registros en los últimos 12 meses para actualizar', 'warning');
+                    return;
+                }
+                
+                const monthName = getMonthName(searchMonth);
+                if (!confirm(`No hay registros del mes anterior. ¿Copiar ${foundRegistros.length} extintores de ${monthName} ${searchYear} a ${getMonthName(targetMonth)} ${targetYear}?`)) {
+                    return;
+                }
+                
+                // Usar los registros encontrados
+                updateRegistrosToCurrentMonth(foundRegistros, targetMonth, targetYear, `${monthName} ${searchYear}`);
+                return;
+            }
+            
+            const previousMonthName = getMonthName(previousMonth);
+            if (!confirm(`¿Copiar ${previousRegistros.length} extintores desde ${previousMonthName} ${previousYear} a ${getMonthName(targetMonth)} ${targetYear}? Esto copiará todos los datos del mes anterior.`)) {
+                return;
+            }
+            
+            // Copiar al mes que se está visualizando
+            updateRegistrosToCurrentMonth(previousRegistros, targetMonth, targetYear, `${previousMonthName} ${previousYear}`);
+        }
+
+        function updateRegistrosToCurrentMonth(sourceRegistros, targetMonth, targetYear, sourceName, silentMode = false) {
+            console.log('🔄 Iniciando actualización de registros...');
+            console.log('🔄 Registros origen:', sourceRegistros.length);
+            console.log('🔄 Mes destino:', getMonthName(targetMonth), targetYear);
+            
+            // Validar que los registros origen sean válidos
+            if (!sourceRegistros || sourceRegistros.length === 0) {
+                showAlert('⚠️ No hay registros válidos para actualizar', 'warning');
+                return;
+            }
+            
+            // Crear nuevos registros basados en los anteriores (COPIANDO TODOS LOS DATOS)
+            const timestamp = Date.now();
+            const nuevosRegistros = sourceRegistros.map((registro, index) => {
+                // Validar que el registro origen tenga los campos mínimos
+                if (!registro.ubicacion || !registro.tipo) {
+                    console.warn('⚠️ Registro origen incompleto:', registro);
+                    return null;
+                }
+                
+                // Crear un nuevo registro COPIANDO TODOS LOS DATOS del mes anterior
+                const nuevoRegistro = {
+                    id: timestamp + index + Math.floor(Math.random() * 10000), // ID único más robusto
+                    fecha: new Date().toISOString(),
+                    mes: parseInt(targetMonth), // Asegurar que sea número
+                    año: parseInt(targetYear), // Asegurar que sea número
+                    
+                    // COPIAR TODOS LOS DATOS DEL REGISTRO ANTERIOR
+                    ubicacion: String(registro.ubicacion).trim(),
+                    tipo: registro.tipo || 'CO2',
+                    capacidad: registro.capacidad || '6',
+                    caducidad: registro.caducidad || '',
+                    senalizacion: registro.senalizacion || false,
+                    manometro: registro.manometro || 'presion_optima',
+                    mangueras: registro.mangueras || 'optimo',
+                    seguros: registro.seguros || false,
+                    selloSeguridad: registro.selloSeguridad || false,
+                    difusor: registro.difusor || 'optimo',
+                    estado_fisico: registro.estado_fisico || 'optimo',
+                    
+                    // Metadatos
+                    actualizadoDe: sourceName,
+                    fechaActualizacion: new Date().toISOString(),
+                    copiaDe: `${getMonthName(registro.mes)} ${registro.año}` // Referencia al mes original
+                };
+                
+                console.log('🔄 Registro copiado completo:', {
+                    id: nuevoRegistro.id,
+                    ubicacion: nuevoRegistro.ubicacion,
+                    mes: nuevoRegistro.mes,
+                    año: nuevoRegistro.año,
+                    estado_fisico: nuevoRegistro.estado_fisico,
+                    manometro: nuevoRegistro.manometro
+                });
+                
+                return nuevoRegistro;
+            }).filter(registro => registro !== null); // Filtrar registros nulos
+            
+            if (nuevosRegistros.length === 0) {
+                showAlert('⚠️ No se pudieron crear registros válidos', 'warning');
+                return;
+            }
+            
+            // Obtener registros existentes
+            let todosLosRegistros = getRegistros();
+            console.log('🔄 Registros existentes antes de actualización:', todosLosRegistros.length);
+            
+            // Verificar que no haya duplicados por ubicación en el mismo mes
+            const registrosExistentesDelMes = todosLosRegistros.filter(r => 
+                parseInt(r.mes) === parseInt(targetMonth) && parseInt(r.año) === parseInt(targetYear)
+            );
+            
+            console.log('🔄 Registros existentes en mes destino:', registrosExistentesDelMes.length);
+            
+            const nuevosRegistrosFiltrados = nuevosRegistros.filter(nuevo => {
+                const yaExiste = registrosExistentesDelMes.some(existente => 
+                    String(existente.ubicacion).toLowerCase().trim() === String(nuevo.ubicacion).toLowerCase().trim()
+                );
+                if (yaExiste) {
+                    console.log('🔄 Duplicado omitido:', nuevo.ubicacion);
+                }
+                return !yaExiste;
+            });
+            
+            if (nuevosRegistrosFiltrados.length === 0) {
+                showAlert('⚠️ Todos los extintores ya existen en este mes', 'warning');
+                return;
+            }
+            
+            if (nuevosRegistrosFiltrados.length < nuevosRegistros.length && !silentMode) {
+                const duplicados = nuevosRegistros.length - nuevosRegistrosFiltrados.length;
+                if (!confirm(`Se encontraron ${duplicados} extintores duplicados que serán omitidos. ¿Continuar actualizando ${nuevosRegistrosFiltrados.length} extintores?`)) {
+                    return;
+                }
+            }
+            
+            // Agregar los nuevos registros
+            todosLosRegistros = todosLosRegistros.concat(nuevosRegistrosFiltrados);
+            console.log('🔄 Total registros después de actualización:', todosLosRegistros.length);
+            
+            // Validar antes de guardar
+            const registrosValidos = todosLosRegistros.filter(r => 
+                r && r.id && r.ubicacion && r.tipo && 
+                typeof r.mes === 'number' && typeof r.año === 'number'
+            );
+            
+            if (registrosValidos.length !== todosLosRegistros.length) {
+                console.error('⚠️ Se encontraron registros inválidos, limpiando...');
+                todosLosRegistros = registrosValidos;
+            }
+            
+            // Guardar en localStorage con validación
+            try {
+                localStorage.setItem('extintorRegistros', JSON.stringify(todosLosRegistros));
+                console.log('✅ Registros guardados exitosamente');
+                
+                // Verificar que se guardó correctamente
+                const verificacion = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
+                if (verificacion.length !== todosLosRegistros.length) {
+                    throw new Error('Error en la verificación del guardado');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al guardar registros:', error);
+                showAlert('❌ Error al guardar los registros actualizados', 'warning');
+                return;
+            }
+            
+            // Actualizar la interfaz inmediatamente
+            loadRegistros();
+            updateStats();
+            
+            if (!silentMode) {
+                showAlert(`✅ ${nuevosRegistrosFiltrados.length} extintores copiados completamente desde ${sourceName} a ${getMonthName(targetMonth)} ${targetYear}. Ahora solo edita los que necesites actualizar.`, 'success');
+            } else {
+                console.log(`✅ Carga automática: ${nuevosRegistrosFiltrados.length} extintores copiados desde ${sourceName} a ${getMonthName(targetMonth)} ${targetYear}`);
+            }
+            
+            // Mostrar detalles de lo que se actualizó
+            console.log('✅ Extintores actualizados exitosamente:', nuevosRegistrosFiltrados.map(r => ({
+                id: r.id,
+                ubicacion: r.ubicacion,
+                tipo: r.tipo,
+                capacidad: r.capacidad,
+                mes: r.mes,
+                año: r.año
+            })));
+        }
+
+        function updateExistingRegistrosFromPrevious(targetMonth, targetYear) {
+            console.log('🔄 Actualizando registros existentes...');
+            
+            // Buscar registros del mes anterior al mes objetivo
+            let previousMonth = targetMonth - 1;
+            let previousYear = targetYear;
+            
+            if (previousMonth < 0) {
+                previousMonth = 11;
+                previousYear = targetYear - 1;
             }
             
             const previousRegistros = getRegistrosByMonth(previousMonth, previousYear);
             
             if (previousRegistros.length === 0) {
-                showAlert('⚠️ No hay registros del mes anterior para copiar', 'warning');
+                showAlert('⚠️ No hay registros del mes anterior para actualizar', 'warning');
                 return;
             }
             
-            if (!confirm(`¿Copiar ${previousRegistros.length} extintores del mes anterior? Esto creará plantillas para el mes actual.`)) {
-                return;
+            let todosLosRegistros = getRegistros();
+            let registrosActualizados = 0;
+            let registrosNuevos = 0;
+            
+            // Actualizar registros existentes y agregar nuevos
+            previousRegistros.forEach(prevRegistro => {
+                if (!prevRegistro.ubicacion || !prevRegistro.tipo) return;
+                
+                // Buscar si existe un registro con la misma ubicación en el mes objetivo
+                const existingIndex = todosLosRegistros.findIndex(r => 
+                    parseInt(r.mes) === parseInt(targetMonth) && 
+                    parseInt(r.año) === parseInt(targetYear) &&
+                    String(r.ubicacion).toLowerCase().trim() === String(prevRegistro.ubicacion).toLowerCase().trim()
+                );
+                
+                if (existingIndex !== -1) {
+                    // SOBRESCRIBIR COMPLETAMENTE el registro existente con TODOS los datos del mes anterior
+                    const registroExistente = todosLosRegistros[existingIndex];
+                    todosLosRegistros[existingIndex] = {
+                        // Mantener solo ID y fecha de creación original
+                        id: registroExistente.id,
+                        fecha: registroExistente.fecha,
+                        mes: parseInt(targetMonth),
+                        año: parseInt(targetYear),
+                        
+                        // COPIAR TODOS LOS DATOS DEL MES ANTERIOR
+                        ubicacion: String(prevRegistro.ubicacion).trim(),
+                        tipo: prevRegistro.tipo,
+                        capacidad: prevRegistro.capacidad,
+                        caducidad: prevRegistro.caducidad,
+                        senalizacion: prevRegistro.senalizacion || false,
+                        manometro: prevRegistro.manometro || 'presion_optima',
+                        mangueras: prevRegistro.mangueras || 'optimo',
+                        seguros: prevRegistro.seguros || false,
+                        selloSeguridad: prevRegistro.selloSeguridad || false,
+                        difusor: prevRegistro.difusor || 'optimo',
+                        estado_fisico: prevRegistro.estado_fisico || 'optimo',
+                        
+                        // Metadatos
+                        actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
+                        fechaActualizacionCompleta: new Date().toISOString(),
+                        copiaDe: `${getMonthName(previousMonth)} ${previousYear}`
+                    };
+                    registrosActualizados++;
+                    console.log('🔄 Registro completamente actualizado:', prevRegistro.ubicacion);
+                } else {
+                    // Crear nuevo registro COPIANDO TODOS LOS DATOS del anterior
+                    const nuevoRegistro = {
+                        id: Date.now() + Math.floor(Math.random() * 10000),
+                        fecha: new Date().toISOString(),
+                        mes: parseInt(targetMonth),
+                        año: parseInt(targetYear),
+                        
+                        // COPIAR TODOS LOS DATOS DEL REGISTRO ANTERIOR
+                        ubicacion: String(prevRegistro.ubicacion).trim(),
+                        tipo: prevRegistro.tipo,
+                        capacidad: prevRegistro.capacidad,
+                        caducidad: prevRegistro.caducidad,
+                        senalizacion: prevRegistro.senalizacion || false,
+                        manometro: prevRegistro.manometro || 'presion_optima',
+                        mangueras: prevRegistro.mangueras || 'optimo',
+                        seguros: prevRegistro.seguros || false,
+                        selloSeguridad: prevRegistro.selloSeguridad || false,
+                        difusor: prevRegistro.difusor || 'optimo',
+                        estado_fisico: prevRegistro.estado_fisico || 'optimo',
+                        
+                        // Metadatos
+                        actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
+                        fechaActualizacion: new Date().toISOString(),
+                        copiaDe: `${getMonthName(previousMonth)} ${previousYear}`
+                    };
+                    
+                    todosLosRegistros.push(nuevoRegistro);
+                    registrosNuevos++;
+                    console.log('🔄 Nuevo registro copiado completo:', prevRegistro.ubicacion);
+                }
+            });
+            
+            // Guardar cambios
+            try {
+                localStorage.setItem('extintorRegistros', JSON.stringify(todosLosRegistros));
+                
+                // Actualizar interfaz inmediatamente
+                loadRegistros();
+                updateStats();
+                
+                let mensaje = '✅ Registros copiados completamente: ';
+                if (registrosActualizados > 0) mensaje += `${registrosActualizados} actualizados con todos los datos`;
+                if (registrosNuevos > 0) {
+                    if (registrosActualizados > 0) mensaje += ', ';
+                    mensaje += `${registrosNuevos} nuevos copiados`;
+                }
+                mensaje += '. Ahora solo edita los registros que necesites actualizar.';
+                
+                showAlert(mensaje, 'success');
+                
+            } catch (error) {
+                console.error('❌ Error al guardar actualizaciones:', error);
+                showAlert('❌ Error al guardar las actualizaciones', 'warning');
             }
-            
-            // Crear nuevos registros basados en los anteriores (solo estructura, sin datos de inspección)
-            const nuevosRegistros = previousRegistros.map(registro => ({
-                id: Date.now() + Math.random(),
-                fecha: new Date().toISOString(),
-                mes: currentMonth,
-                año: currentYear,
-                ubicacion: registro.ubicacion,
-                tipo: registro.tipo,
-                capacidad: registro.capacidad,
-                senalizacion: false, // Resetear para nueva inspección
-                manometro: 'presion_optima', // Valor por defecto
-                mangueras: 'optimo', // Valor por defecto
-                seguros: false, // Resetear para nueva inspección
-                selloSeguridad: false, // Resetear para nueva inspección
-                difusor: 'optimo', // Valor por defecto
-                caducidad: registro.caducidad, // Mantener fecha de caducidad
-                estado_fisico: 'optimo' // Valor por defecto
-            }));
-            
-            // Guardar los nuevos registros
-            let registros = getRegistros();
-            registros = registros.concat(nuevosRegistros);
-            localStorage.setItem('extintorRegistros', JSON.stringify(registros));
-            
-            loadRegistros();
-            updateStats();
-            showAlert(`✅ ${nuevosRegistros.length} extintores copiados como plantillas`, 'success');
         }
 
         // Estadísticas
@@ -1088,7 +1516,7 @@
             }
         }
 
-        // Generación de PDF
+        // Generación de PDF simple y confiable
         function generatePDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1096,96 +1524,105 @@
                 showAlert('⚠️ No hay registros para generar el reporte', 'warning');
                 return;
             }
+
+            showAlert('📄 Generando reporte PDF...', 'success');
             
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Configuración del documento
-            const pageWidth = doc.internal.pageSize.width;
-            const margin = 20;
-            let yPosition = margin;
-            
-            // Título
-            doc.setFontSize(20);
-            doc.setFont(undefined, 'bold');
-            doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
-            yPosition += 15;
-            
-            // Fecha del reporte
-            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'normal');
-            doc.text(`${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`, pageWidth / 2, yPosition, { align: 'center' });
-            yPosition += 20;
-            
-            // Resumen estadístico
-            doc.setFontSize(16);
-            doc.setFont(undefined, 'bold');
-            doc.text('Resumen Estadístico', margin, yPosition);
-            yPosition += 10;
-            
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'normal');
-            
-            const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
-            const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
-            const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
-            
-            doc.text(`Total de extintores revisados: ${registros.length}`, margin, yPosition);
-            yPosition += 7;
-            doc.text(`Estado excelente: ${excelentes}`, margin, yPosition);
-            yPosition += 7;
-            doc.text(`Estado óptimo: ${optimos}`, margin, yPosition);
-            yPosition += 7;
-            doc.text(`Mal estado: ${malos}`, margin, yPosition);
-            yPosition += 20;
-            
-            // Detalle de registros
-            doc.setFontSize(16);
-            doc.setFont(undefined, 'bold');
-            doc.text('Detalle de Registros', margin, yPosition);
-            yPosition += 15;
-            
-            registros.forEach((registro, index) => {
-                // Verificar si necesitamos una nueva página
-                if (yPosition > 250) {
-                    doc.addPage();
-                    yPosition = margin;
-                }
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Configuración del documento
+                const pageWidth = doc.internal.pageSize.width;
+                const margin = 20;
+                let yPosition = margin;
+                
+                // Título
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'bold');
+                doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 15;
+                
+                // Fecha del reporte
+                const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                               'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'normal');
+                doc.text(`${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 20;
+                
+                // Resumen estadístico
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('Resumen Estadístico', margin, yPosition);
+                yPosition += 10;
                 
                 doc.setFontSize(12);
-                doc.setFont(undefined, 'bold');
-                doc.text(`${index + 1}. ${registro.ubicacion}`, margin, yPosition);
-                yPosition += 7;
-                
                 doc.setFont(undefined, 'normal');
-                doc.text(`Tipo: ${registro.tipo} | Capacidad: ${registro.capacidad} kg`, margin + 5, yPosition);
-                yPosition += 5;
-                doc.text(`Estado físico: ${registro.estado_fisico.replace('_', ' ')}`, margin + 5, yPosition);
-                yPosition += 5;
-                doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
-                yPosition += 5;
-                doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
-                yPosition += 5;
-                if (registro.tipo === 'PQS') {
-                    doc.text(`Sello de seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                
+                const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
+                const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
+                const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
+                
+                doc.text(`Total de extintores revisados: ${registros.length}`, margin, yPosition);
+                yPosition += 7;
+                doc.text(`Estado excelente: ${excelentes}`, margin, yPosition);
+                yPosition += 7;
+                doc.text(`Estado óptimo: ${optimos}`, margin, yPosition);
+                yPosition += 7;
+                doc.text(`Mal estado: ${malos}`, margin, yPosition);
+                yPosition += 20;
+                
+                // Detalle de registros
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.text('Detalle de Registros', margin, yPosition);
+                yPosition += 15;
+                
+                registros.forEach((registro, index) => {
+                    // Verificar si necesitamos una nueva página
+                    if (yPosition > 250) {
+                        doc.addPage();
+                        yPosition = margin;
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(`${index + 1}. ${registro.ubicacion}`, margin, yPosition);
+                    yPosition += 7;
+                    
+                    doc.setFont(undefined, 'normal');
+                    doc.text(`Tipo: ${registro.tipo} | Capacidad: ${registro.capacidad} kg`, margin + 5, yPosition);
                     yPosition += 5;
-                }
-                doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
-                yPosition += 10;
-            });
-            
-            // Pie de página
-            const today = new Date();
-            doc.setFontSize(10);
-            doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
-            
-            // Descargar PDF
-            const fileName = `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`;
-            doc.save(fileName);
-            
-            showAlert('📄 Reporte PDF generado exitosamente', 'success');
+                    doc.text(`Estado físico: ${registro.estado_fisico.replace('_', ' ')}`, margin + 5, yPosition);
+                    yPosition += 5;
+                    doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
+                    yPosition += 5;
+                    doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                    yPosition += 5;
+                    if (registro.tipo === 'PQS') {
+                        doc.text(`Sello de seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                        yPosition += 5;
+                    }
+                    doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
+                    yPosition += 10;
+                });
+                
+                // Pie de página
+                const today = new Date();
+                doc.setFontSize(10);
+                doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
+                
+                // Nombre del archivo
+                const fileName = `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`;
+                
+                // Descarga simple y directa
+                doc.save(fileName);
+                showAlert('📄 Reporte PDF descargado exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error al generar PDF:', error);
+                showAlert('❌ Error al generar el PDF. Intenta nuevamente.', 'warning');
+            }
         }
 
         // Gestión de datos
@@ -1307,24 +1744,7 @@
             }, 3000);
         }
 
-        function checkMonthlyReset() {
-            const lastReset = localStorage.getItem('lastMonthlyReset');
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            
-            if (!lastReset) {
-                localStorage.setItem('lastMonthlyReset', `${currentYear}-${currentMonth}`);
-                return;
-            }
-            
-            const [lastYear, lastMonth] = lastReset.split('-').map(Number);
-            
-            if (currentYear > lastYear || (currentYear === lastYear && currentMonth > lastMonth)) {
-                // Nuevo mes detectado - actualizar formularios
-                localStorage.setItem('lastMonthlyReset', `${currentYear}-${currentMonth}`);
-                showAlert('📅 Formularios actualizados para el nuevo mes', 'success');
-            }
-        }
+
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99126c72871e7244',t:'MTc2MDg5OTQzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9914d607230e7244',t:'MTc2MDkyNDcyOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
