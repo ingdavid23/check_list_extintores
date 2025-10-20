@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -11,7 +12,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
             min-height: 100%;
             color: #333;
         }
@@ -1516,7 +1517,19 @@
             }
         }
 
-        // Generación de PDF simple y confiable
+        // Función para detectar si estamos en una APK Android
+        function isAndroidAPK() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isAndroid = userAgent.includes('android');
+            const isWebView = userAgent.includes('wv') || 
+                            window.navigator.standalone === false ||
+                            !window.chrome ||
+                            typeof window.orientation !== 'undefined';
+            
+            return isAndroid && isWebView;
+        }
+
+        // Generación de PDF con soporte para APK Android
         function generatePDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1615,9 +1628,47 @@
                 // Nombre del archivo
                 const fileName = `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`;
                 
-                // Descarga simple y directa
-                doc.save(fileName);
-                showAlert('📄 Reporte PDF descargado exitosamente', 'success');
+                // Verificar si estamos en una APK Android
+                if (isAndroidAPK()) {
+                    // Para APK Android: abrir en navegador externo
+                    const pdfBlob = doc.output('blob');
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    
+                    // Crear enlace temporal para abrir en navegador
+                    const tempLink = document.createElement('a');
+                    tempLink.href = pdfUrl;
+                    tempLink.download = fileName;
+                    tempLink.target = '_blank';
+                    tempLink.rel = 'noopener noreferrer';
+                    
+                    // Intentar abrir en navegador externo
+                    try {
+                        // Método 1: Abrir directamente en navegador
+                        window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                        
+                        // Método 2: Crear enlace de descarga como respaldo
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        document.body.removeChild(tempLink);
+                        
+                        showAlert('📱 PDF abierto en navegador para descarga', 'success');
+                        
+                        // Limpiar URL después de un tiempo
+                        setTimeout(() => {
+                            URL.revokeObjectURL(pdfUrl);
+                        }, 10000);
+                        
+                    } catch (error) {
+                        console.error('Error al abrir en navegador:', error);
+                        // Fallback: descarga normal
+                        doc.save(fileName);
+                        showAlert('📄 PDF descargado (método alternativo)', 'success');
+                    }
+                } else {
+                    // Para navegadores normales: descarga directa
+                    doc.save(fileName);
+                    showAlert('📄 Reporte PDF descargado exitosamente', 'success');
+                }
                 
             } catch (error) {
                 console.error('❌ Error al generar PDF:', error);
@@ -1746,5 +1797,5 @@
 
 
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9914d607230e7244',t:'MTc2MDkyNDcyOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9914f06772d1267c',t:'MTc2MDkyNTgxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
