@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.e0">
     <title>ExtintorCheck Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -590,13 +589,53 @@
             </div>
 
             <div class="stat-card" style="margin-bottom: 20px;">
-                <h3 style="margin-top: 0; color: #495057;">📄 Generar Reporte Mensual</h3>
+                <h3 style="margin-top: 0; color: #495057;">📄 Gestor de Reportes PDF</h3>
                 <p style="color: #6c757d; margin-bottom: 20px;">
-                    Exporta todos los registros del mes seleccionado en formato PDF para presentar a la administración.
+                    Genera, visualiza y descarga reportes PDF de tus inspecciones mensuales.
                 </p>
-                <button onclick="generatePDF()" class="btn btn-success btn-block">
-                    📥 Descargar Reporte PDF
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button onclick="generateAndPreviewPDF()" class="btn btn-primary" style="flex: 1;">
+                        👁️ Generar y Visualizar
+                    </button>
+                    <button onclick="generatePDF()" class="btn btn-success" style="flex: 1;">
+                        📥 Descargar Directo
+                    </button>
+                </div>
+                <button onclick="togglePDFManager()" class="btn btn-secondary btn-block">
+                    📁 Ver PDFs Guardados (<span id="pdfCount">0</span>)
                 </button>
+            </div>
+
+            <!-- Mini Gestor de PDFs -->
+            <div id="pdfManager" class="stat-card" style="display: none; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #495057;">📁 PDFs Guardados</h3>
+                    <button onclick="clearAllPDFs()" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
+                        🗑️ Limpiar Todo
+                    </button>
+                </div>
+                <div id="pdfList"></div>
+            </div>
+
+            <!-- Visor de PDF -->
+            <div id="pdfViewer" class="stat-card" style="display: none; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #495057;">👁️ Vista Previa del PDF</h3>
+                    <button onclick="closePDFViewer()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                        ❌ Cerrar
+                    </button>
+                </div>
+                <div style="background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px;">
+                    <div id="pdfPreview" style="max-height: 400px; overflow-y: auto; background: white; border-radius: 4px; padding: 15px; text-align: left; font-size: 12px; line-height: 1.4;"></div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="downloadCurrentPDF()" class="btn btn-success" style="flex: 1;">
+                        📥 Descargar Este PDF
+                    </button>
+                    <button onclick="savePDFToManager()" class="btn btn-primary" style="flex: 1;">
+                        💾 Guardar en Gestor
+                    </button>
+                </div>
             </div>
 
             <div class="stat-card">
@@ -634,11 +673,16 @@
         let statsDate = new Date();
         let reportDate = new Date();
 
+        // Variables globales para PDF
+        let currentPDFData = null;
+        let currentPDFBlob = null;
+
         // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
             updateMonthDisplays();
             loadRegistros();
             updateStats();
+            updatePDFCount();
             
             // Configurar formulario
             document.getElementById('extinguisherForm').addEventListener('submit', handleFormSubmit);
@@ -1529,7 +1573,197 @@
             return isAndroid && isWebView;
         }
 
-        // Generación de PDF con soporte para APK Android
+        // Función para generar y mostrar vista previa del PDF
+        function generateAndPreviewPDF() {
+            const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
+            
+            if (registros.length === 0) {
+                showAlert('⚠️ No hay registros para generar el reporte', 'warning');
+                return;
+            }
+
+            showAlert('📄 Generando vista previa...', 'success');
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Generar el PDF (misma lógica que generatePDF)
+                const pdfData = generatePDFContent(doc, registros);
+                currentPDFData = pdfData;
+                currentPDFBlob = doc.output('blob');
+                
+                // Mostrar vista previa en HTML
+                showPDFPreview(pdfData);
+                
+            } catch (error) {
+                console.error('❌ Error al generar vista previa:', error);
+                showAlert('❌ Error al generar la vista previa', 'warning');
+            }
+        }
+
+        // Función para generar el contenido del PDF (reutilizable)
+        function generatePDFContent(doc, registros) {
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 20;
+            let yPosition = margin;
+            
+            // Título
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 15;
+            
+            // Fecha del reporte
+            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'normal');
+            const monthYear = `${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`;
+            doc.text(monthYear, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 20;
+            
+            // Resumen estadístico
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Resumen Estadístico', margin, yPosition);
+            yPosition += 10;
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'normal');
+            
+            const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
+            const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
+            const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
+            
+            doc.text(`Total de extintores revisados: ${registros.length}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Estado excelente: ${excelentes}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Estado óptimo: ${optimos}`, margin, yPosition);
+            yPosition += 7;
+            doc.text(`Mal estado: ${malos}`, margin, yPosition);
+            yPosition += 20;
+            
+            // Detalle de registros
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detalle de Registros', margin, yPosition);
+            yPosition += 15;
+            
+            registros.forEach((registro, index) => {
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text(`${index + 1}. ${registro.ubicacion}`, margin, yPosition);
+                yPosition += 7;
+                
+                doc.setFont(undefined, 'normal');
+                doc.text(`Tipo: ${registro.tipo} | Capacidad: ${registro.capacidad} kg`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Estado físico: ${registro.estado_fisico.replace('_', ' ')}`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
+                yPosition += 5;
+                doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                yPosition += 5;
+                if (registro.tipo === 'PQS') {
+                    doc.text(`Sello de seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}`, margin + 5, yPosition);
+                    yPosition += 5;
+                }
+                doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
+                yPosition += 10;
+            });
+            
+            // Pie de página
+            const today = new Date();
+            doc.setFontSize(10);
+            doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
+            
+            // Retornar datos para la vista previa
+            return {
+                title: 'Reporte Mensual de Extintores',
+                monthYear: monthYear,
+                totalExtintores: registros.length,
+                excelentes: excelentes,
+                optimos: optimos,
+                malos: malos,
+                registros: registros,
+                generatedDate: today.toLocaleDateString('es-ES'),
+                fileName: `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`
+            };
+        }
+
+        // Función para mostrar la vista previa en HTML
+        function showPDFPreview(pdfData) {
+            const previewContainer = document.getElementById('pdfPreview');
+            const viewer = document.getElementById('pdfViewer');
+            
+            let previewHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="color: #495057; margin: 0;">${pdfData.title}</h2>
+                    <h3 style="color: #6c757d; margin: 5px 0;">${pdfData.monthYear}</h3>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="color: #495057; margin-top: 0;">📊 Resumen Estadístico</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
+                        <div><strong>Total revisados:</strong> ${pdfData.totalExtintores}</div>
+                        <div><strong>Estado excelente:</strong> ${pdfData.excelentes}</div>
+                        <div><strong>Estado óptimo:</strong> ${pdfData.optimos}</div>
+                        <div><strong>Mal estado:</strong> ${pdfData.malos}</div>
+                    </div>
+                </div>
+                
+                <h4 style="color: #495057;">📋 Detalle de Registros</h4>
+            `;
+            
+            pdfData.registros.forEach((registro, index) => {
+                const statusColor = registro.estado_fisico === 'excelente' ? '#28a745' : 
+                                  registro.estado_fisico === 'optimo' ? '#ffc107' : '#dc3545';
+                
+                previewHTML += `
+                    <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong style="color: #495057;">${index + 1}. ${registro.ubicacion}</strong>
+                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                                ${registro.estado_fisico.replace('_', ' ').toUpperCase()}
+                            </span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #6c757d;">
+                            <div><strong>Tipo:</strong> ${registro.tipo}</div>
+                            <div><strong>Capacidad:</strong> ${registro.capacidad} kg</div>
+                            <div><strong>Manómetro:</strong> ${registro.manometro.replace('_', ' ')}</div>
+                            <div><strong>Mangueras:</strong> ${registro.mangueras}</div>
+                            <div><strong>Señalización:</strong> ${registro.senalizacion ? '✅' : '❌'}</div>
+                            <div><strong>Seguros:</strong> ${registro.seguros ? '✅' : '❌'}</div>
+                            ${registro.tipo === 'PQS' ? `<div><strong>Sello Seguridad:</strong> ${registro.selloSeguridad ? '✅' : '❌'}</div>` : ''}
+                            <div><strong>Caducidad:</strong> ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            previewHTML += `
+                <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; font-size: 11px; color: #6c757d;">
+                    Generado el ${pdfData.generatedDate} - ExtintorCheck Pro
+                </div>
+            `;
+            
+            previewContainer.innerHTML = previewHTML;
+            viewer.style.display = 'block';
+            
+            // Scroll hacia el visor
+            viewer.scrollIntoView({ behavior: 'smooth' });
+            
+            showAlert('👁️ Vista previa generada exitosamente', 'success');
+        }
+
+        // Generación de PDF con soporte para APK Android (versión simplificada)
         function generatePDF() {
             const registros = getRegistrosByMonth(reportDate.getMonth(), reportDate.getFullYear());
             
@@ -1544,89 +1778,8 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Configuración del documento
-                const pageWidth = doc.internal.pageSize.width;
-                const margin = 20;
-                let yPosition = margin;
-                
-                // Título
-                doc.setFontSize(20);
-                doc.setFont(undefined, 'bold');
-                doc.text('Reporte Mensual de Extintores', pageWidth / 2, yPosition, { align: 'center' });
-                yPosition += 15;
-                
-                // Fecha del reporte
-                const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                               'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                doc.setFontSize(14);
-                doc.setFont(undefined, 'normal');
-                doc.text(`${months[reportDate.getMonth()]} ${reportDate.getFullYear()}`, pageWidth / 2, yPosition, { align: 'center' });
-                yPosition += 20;
-                
-                // Resumen estadístico
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'bold');
-                doc.text('Resumen Estadístico', margin, yPosition);
-                yPosition += 10;
-                
-                doc.setFontSize(12);
-                doc.setFont(undefined, 'normal');
-                
-                const excelentes = registros.filter(r => r.estado_fisico === 'excelente').length;
-                const optimos = registros.filter(r => r.estado_fisico === 'optimo').length;
-                const malos = registros.filter(r => r.estado_fisico === 'mal_estado').length;
-                
-                doc.text(`Total de extintores revisados: ${registros.length}`, margin, yPosition);
-                yPosition += 7;
-                doc.text(`Estado excelente: ${excelentes}`, margin, yPosition);
-                yPosition += 7;
-                doc.text(`Estado óptimo: ${optimos}`, margin, yPosition);
-                yPosition += 7;
-                doc.text(`Mal estado: ${malos}`, margin, yPosition);
-                yPosition += 20;
-                
-                // Detalle de registros
-                doc.setFontSize(16);
-                doc.setFont(undefined, 'bold');
-                doc.text('Detalle de Registros', margin, yPosition);
-                yPosition += 15;
-                
-                registros.forEach((registro, index) => {
-                    // Verificar si necesitamos una nueva página
-                    if (yPosition > 250) {
-                        doc.addPage();
-                        yPosition = margin;
-                    }
-                    
-                    doc.setFontSize(12);
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`${index + 1}. ${registro.ubicacion}`, margin, yPosition);
-                    yPosition += 7;
-                    
-                    doc.setFont(undefined, 'normal');
-                    doc.text(`Tipo: ${registro.tipo} | Capacidad: ${registro.capacidad} kg`, margin + 5, yPosition);
-                    yPosition += 5;
-                    doc.text(`Estado físico: ${registro.estado_fisico.replace('_', ' ')}`, margin + 5, yPosition);
-                    yPosition += 5;
-                    doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
-                    yPosition += 5;
-                    doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
-                    yPosition += 5;
-                    if (registro.tipo === 'PQS') {
-                        doc.text(`Sello de seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}`, margin + 5, yPosition);
-                        yPosition += 5;
-                    }
-                    doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
-                    yPosition += 10;
-                });
-                
-                // Pie de página
-                const today = new Date();
-                doc.setFontSize(10);
-                doc.text(`Generado el ${today.toLocaleDateString('es-ES')} - ExtintorCheck Pro`, margin, doc.internal.pageSize.height - 10);
-                
-                // Nombre del archivo
-                const fileName = `Reporte_Extintores_${months[reportDate.getMonth()]}_${reportDate.getFullYear()}.pdf`;
+                // Usar la función reutilizable para generar contenido
+                const pdfData = generatePDFContent(doc, registros);
                 
                 // Verificar si estamos en una APK Android
                 if (isAndroidAPK()) {
@@ -1637,7 +1790,7 @@
                     // Crear enlace temporal para abrir en navegador
                     const tempLink = document.createElement('a');
                     tempLink.href = pdfUrl;
-                    tempLink.download = fileName;
+                    tempLink.download = pdfData.fileName;
                     tempLink.target = '_blank';
                     tempLink.rel = 'noopener noreferrer';
                     
@@ -1661,12 +1814,12 @@
                     } catch (error) {
                         console.error('Error al abrir en navegador:', error);
                         // Fallback: descarga normal
-                        doc.save(fileName);
+                        doc.save(pdfData.fileName);
                         showAlert('📄 PDF descargado (método alternativo)', 'success');
                     }
                 } else {
                     // Para navegadores normales: descarga directa
-                    doc.save(fileName);
+                    doc.save(pdfData.fileName);
                     showAlert('📄 Reporte PDF descargado exitosamente', 'success');
                 }
                 
@@ -1674,6 +1827,323 @@
                 console.error('❌ Error al generar PDF:', error);
                 showAlert('❌ Error al generar el PDF. Intenta nuevamente.', 'warning');
             }
+        }
+
+        // Funciones del gestor de PDFs
+        function closePDFViewer() {
+            document.getElementById('pdfViewer').style.display = 'none';
+            currentPDFData = null;
+            currentPDFBlob = null;
+        }
+
+        function downloadCurrentPDF() {
+            if (!currentPDFBlob || !currentPDFData) {
+                showAlert('⚠️ No hay PDF para descargar', 'warning');
+                return;
+            }
+
+            try {
+                if (isAndroidAPK()) {
+                    // Para APK Android: abrir en navegador externo
+                    const pdfUrl = URL.createObjectURL(currentPDFBlob);
+                    const tempLink = document.createElement('a');
+                    tempLink.href = pdfUrl;
+                    tempLink.download = currentPDFData.fileName;
+                    tempLink.target = '_blank';
+                    tempLink.rel = 'noopener noreferrer';
+                    
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    document.body.removeChild(tempLink);
+                    
+                    showAlert('📱 PDF abierto en navegador para descarga', 'success');
+                    
+                    setTimeout(() => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, 10000);
+                } else {
+                    // Para navegadores normales: descarga directa
+                    const url = URL.createObjectURL(currentPDFBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentPDFData.fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showAlert('📥 PDF descargado exitosamente', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Error al descargar PDF:', error);
+                showAlert('❌ Error al descargar el PDF', 'warning');
+            }
+        }
+
+        function savePDFToManager() {
+            if (!currentPDFData || !currentPDFBlob) {
+                showAlert('⚠️ No hay PDF para guardar', 'warning');
+                return;
+            }
+
+            try {
+                // Convertir blob a base64 para almacenamiento
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const base64Data = reader.result.split(',')[1];
+                    
+                    const savedPDF = {
+                        id: Date.now(),
+                        fileName: currentPDFData.fileName,
+                        monthYear: currentPDFData.monthYear,
+                        totalExtintores: currentPDFData.totalExtintores,
+                        generatedDate: currentPDFData.generatedDate,
+                        data: base64Data,
+                        size: Math.round(currentPDFBlob.size / 1024) // KB
+                    };
+                    
+                    // Obtener PDFs guardados
+                    let savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+                    
+                    // Verificar si ya existe un PDF para este mes
+                    const existingIndex = savedPDFs.findIndex(pdf => pdf.monthYear === currentPDFData.monthYear);
+                    if (existingIndex !== -1) {
+                        if (confirm(`Ya existe un PDF para ${currentPDFData.monthYear}. ¿Reemplazarlo?`)) {
+                            savedPDFs[existingIndex] = savedPDF;
+                        } else {
+                            return;
+                        }
+                    } else {
+                        savedPDFs.push(savedPDF);
+                    }
+                    
+                    // Limitar a máximo 10 PDFs para no sobrecargar localStorage
+                    if (savedPDFs.length > 10) {
+                        savedPDFs = savedPDFs.slice(-10);
+                    }
+                    
+                    localStorage.setItem('savedPDFs', JSON.stringify(savedPDFs));
+                    updatePDFCount();
+                    loadPDFList();
+                    
+                    showAlert('💾 PDF guardado en el gestor exitosamente', 'success');
+                };
+                reader.readAsDataURL(currentPDFBlob);
+                
+            } catch (error) {
+                console.error('❌ Error al guardar PDF:', error);
+                showAlert('❌ Error al guardar el PDF en el gestor', 'warning');
+            }
+        }
+
+        function togglePDFManager() {
+            const manager = document.getElementById('pdfManager');
+            if (manager.style.display === 'none') {
+                manager.style.display = 'block';
+                loadPDFList();
+                manager.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                manager.style.display = 'none';
+            }
+        }
+
+        function updatePDFCount() {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            document.getElementById('pdfCount').textContent = savedPDFs.length;
+        }
+
+        function loadPDFList() {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            const container = document.getElementById('pdfList');
+            
+            if (savedPDFs.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #6c757d;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">📄</div>
+                        <p>No hay PDFs guardados</p>
+                        <p style="font-size: 12px;">Usa "Guardar en Gestor" después de generar un PDF</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Ordenar por fecha de generación (más reciente primero)
+            savedPDFs.sort((a, b) => b.id - a.id);
+            
+            container.innerHTML = savedPDFs.map(pdf => `
+                <div style="border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: white;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #495057;">${pdf.monthYear}</strong>
+                        <span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                            ${pdf.totalExtintores} extintores
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">
+                        <div><strong>Archivo:</strong> ${pdf.fileName}</div>
+                        <div><strong>Generado:</strong> ${pdf.generatedDate} | <strong>Tamaño:</strong> ${pdf.size} KB</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="viewSavedPDF(${pdf.id})" class="btn btn-primary" style="flex: 1; padding: 6px 12px; font-size: 12px;">
+                            👁️ Ver
+                        </button>
+                        <button onclick="downloadSavedPDF(${pdf.id})" class="btn btn-success" style="flex: 1; padding: 6px 12px; font-size: 12px;">
+                            📥 Descargar
+                        </button>
+                        <button onclick="deleteSavedPDF(${pdf.id})" class="btn" style="background: #dc3545; color: white; padding: 6px 12px; font-size: 12px;">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewSavedPDF(pdfId) {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            const pdf = savedPDFs.find(p => p.id === pdfId);
+            
+            if (!pdf) {
+                showAlert('⚠️ PDF no encontrado', 'warning');
+                return;
+            }
+            
+            try {
+                // Convertir base64 de vuelta a blob
+                const byteCharacters = atob(pdf.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                // Crear datos simulados para la vista previa
+                const mockPDFData = {
+                    title: 'Reporte Mensual de Extintores',
+                    monthYear: pdf.monthYear,
+                    totalExtintores: pdf.totalExtintores,
+                    fileName: pdf.fileName,
+                    generatedDate: pdf.generatedDate,
+                    registros: [] // Los registros no se guardan para ahorrar espacio
+                };
+                
+                currentPDFData = mockPDFData;
+                currentPDFBlob = blob;
+                
+                // Mostrar vista previa simplificada
+                const previewContainer = document.getElementById('pdfPreview');
+                previewContainer.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h2 style="color: #495057; margin: 0;">${mockPDFData.title}</h2>
+                        <h3 style="color: #6c757d; margin: 5px 0;">${mockPDFData.monthYear}</h3>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="color: #495057; margin-top: 0;">📊 Información del PDF</h4>
+                        <div style="font-size: 14px;">
+                            <div><strong>Total de extintores:</strong> ${mockPDFData.totalExtintores}</div>
+                            <div><strong>Archivo:</strong> ${mockPDFData.fileName}</div>
+                            <div><strong>Generado:</strong> ${mockPDFData.generatedDate}</div>
+                            <div><strong>Tamaño:</strong> ${pdf.size} KB</div>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 20px; background: #e9ecef; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 15px;">📄</div>
+                        <h4 style="color: #495057;">PDF Guardado</h4>
+                        <p style="color: #6c757d; margin-bottom: 0;">
+                            Este PDF está guardado en tu dispositivo.<br>
+                            Usa los botones de abajo para descargarlo o abrirlo.
+                        </p>
+                    </div>
+                `;
+                
+                document.getElementById('pdfViewer').style.display = 'block';
+                document.getElementById('pdfViewer').scrollIntoView({ behavior: 'smooth' });
+                
+                showAlert('👁️ PDF cargado desde el gestor', 'success');
+                
+            } catch (error) {
+                console.error('❌ Error al cargar PDF:', error);
+                showAlert('❌ Error al cargar el PDF guardado', 'warning');
+            }
+        }
+
+        function downloadSavedPDF(pdfId) {
+            const savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            const pdf = savedPDFs.find(p => p.id === pdfId);
+            
+            if (!pdf) {
+                showAlert('⚠️ PDF no encontrado', 'warning');
+                return;
+            }
+            
+            try {
+                // Convertir base64 de vuelta a blob
+                const byteCharacters = atob(pdf.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                if (isAndroidAPK()) {
+                    // Para APK Android: abrir en navegador externo
+                    const pdfUrl = URL.createObjectURL(blob);
+                    const tempLink = document.createElement('a');
+                    tempLink.href = pdfUrl;
+                    tempLink.download = pdf.fileName;
+                    tempLink.target = '_blank';
+                    tempLink.rel = 'noopener noreferrer';
+                    
+                    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    document.body.removeChild(tempLink);
+                    
+                    showAlert('📱 PDF abierto en navegador para descarga', 'success');
+                    
+                    setTimeout(() => {
+                        URL.revokeObjectURL(pdfUrl);
+                    }, 10000);
+                } else {
+                    // Para navegadores normales: descarga directa
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = pdf.fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showAlert('📥 PDF descargado exitosamente', 'success');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al descargar PDF:', error);
+                showAlert('❌ Error al descargar el PDF', 'warning');
+            }
+        }
+
+        function deleteSavedPDF(pdfId) {
+            if (!confirm('¿Eliminar este PDF del gestor?')) {
+                return;
+            }
+            
+            let savedPDFs = JSON.parse(localStorage.getItem('savedPDFs') || '[]');
+            savedPDFs = savedPDFs.filter(pdf => pdf.id !== pdfId);
+            localStorage.setItem('savedPDFs', JSON.stringify(savedPDFs));
+            
+            updatePDFCount();
+            loadPDFList();
+            showAlert('🗑️ PDF eliminado del gestor', 'warning');
+        }
+
+        function clearAllPDFs() {
+            if (!confirm('¿Eliminar todos los PDFs guardados? Esta acción no se puede deshacer.')) {
+                return;
+            }
+            
+            localStorage.removeItem('savedPDFs');
+            updatePDFCount();
+            loadPDFList();
+            showAlert('🗑️ Todos los PDFs han sido eliminados', 'warning');
         }
 
         // Gestión de datos
@@ -1797,5 +2267,6 @@
 
 
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9914f06772d1267c',t:'MTc2MDkyNTgxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'991509e6b4237244',t:'MTc2MDkyNjg1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
