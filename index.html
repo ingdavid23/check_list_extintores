@@ -213,20 +213,9 @@
             text-transform: uppercase;
         }
 
-        .status-excelente {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-optimo {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-mal {
-            background: #f8d7da;
-            color: #721c24;
-        }
+        .status-excelente { background: #d4edda; color: #155724; }
+        .status-optimo { background: #fff3cd; color: #856404; }
+        .status-mal { background: #f8d7da; color: #721c24; }
 
         .stats-grid {
             display: grid;
@@ -278,17 +267,8 @@
             font-size: 14px;
         }
 
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
 
         .empty-state {
             text-align: center;
@@ -338,25 +318,12 @@
             justify-content: center;
         }
 
-        .current-month {
-            flex: 1;
-            text-align: center;
-            font-weight: 600;
-            color: #495057;
-        }
+        .current-month { flex: 1; text-align: center; font-weight: 600; color: #495057; }
 
         @media (max-width: 480px) {
-            .container {
-                max-width: 100%;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .radio-group {
-                flex-direction: column;
-            }
+            .container { max-width: 100%; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .radio-group { flex-direction: column; }
         }
     </style>
 </head>
@@ -368,10 +335,10 @@
         </header>
 
         <nav class="nav-tabs">
-            <button class="nav-tab active" onclick="showTab('checklist')">📋 Check-list</button>
-            <button class="nav-tab" onclick="showTab('registros')">📁 Registros</button>
-            <button class="nav-tab" onclick="showTab('estadisticas')">📊 Estadísticas</button>
-            <button class="nav-tab" onclick="showTab('reportes')">📄 Reportes</button>
+            <button class="nav-tab active" onclick="showTab('checklist', this)">📋 Check-list</button>
+            <button class="nav-tab" onclick="showTab('registros', this)">📁 Registros</button>
+            <button class="nav-tab" onclick="showTab('estadisticas', this)">📊 Estadísticas</button>
+            <button class="nav-tab" onclick="showTab('reportes', this)">📄 Reportes</button>
         </nav>
 
         <div id="checklist" class="tab-content active">
@@ -467,7 +434,8 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <!-- DIFUSOR: visible en CO2; se oculta cuando el tipo sea PQS -->
+                <div class="form-group" id="difusorGroup">
                     <label>💨 Estado del Difusor</label>
                     <div class="radio-group">
                         <label class="radio-option">
@@ -506,6 +474,12 @@
                             <span>Excelente</span>
                         </label>
                     </div>
+                </div>
+
+                <!-- 📝 NUEVO: Observaciones opcionales -->
+                <div class="form-group">
+                    <label for="observaciones">📝 Observaciones (opcional)</label>
+                    <textarea id="observaciones" class="form-control" rows="3" placeholder="Anota hallazgos, recomendaciones o incidencias específicas de este extintor..."></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">💾 Guardar Registro</button>
@@ -657,42 +631,54 @@
             // Configurar formulario
             document.getElementById('extinguisherForm').addEventListener('submit', handleFormSubmit);
             
-            // Configurar eventos para mostrar/ocultar sello de seguridad
+            // Configurar eventos para mostrar/ocultar sello y difusor según tipo
             document.querySelectorAll('input[name="tipo"]').forEach(radio => {
                 radio.addEventListener('change', toggleSelloSeguridad);
             });
+
+            // Estado inicial
+            toggleSelloSeguridad();
             
             // Verificar y cargar automáticamente registros del mes actual
             autoLoadCurrentMonthRegistros();
         });
 
-        // Función para mostrar/ocultar sello de seguridad
+        // Función para mostrar/ocultar sello de seguridad y difusor
         function toggleSelloSeguridad() {
             const tipoSeleccionado = document.querySelector('input[name="tipo"]:checked');
             const selloGroup = document.getElementById('selloSeguridadGroup');
             const selloCheckbox = document.getElementById('selloSeguridad');
+            const difusorGroup = document.getElementById('difusorGroup');
+            const difusorRadios = document.querySelectorAll('input[name="difusor"]');
             
             if (tipoSeleccionado && tipoSeleccionado.value === 'PQS') {
+                // Solo PQS: mostrar sello, ocultar difusor y quitar "required"
                 selloGroup.style.display = 'block';
+                difusorGroup.style.display = 'none';
+                difusorRadios.forEach(r => { r.required = false; r.checked = false; });
             } else {
+                // CO2 u otro: ocultar sello, mostrar difusor y requerirlo
                 selloGroup.style.display = 'none';
-                selloCheckbox.checked = false; // Limpiar si no es PQS
+                if (selloCheckbox) selloCheckbox.checked = false;
+                difusorGroup.style.display = 'block';
+                difusorRadios.forEach(r => { r.required = true; });
             }
         }
 
-        // Gestión de pestañas
-        function showTab(tabName) {
+        // Gestión de pestañas (sin depender de event.target)
+        function showTab(tabName, originEl = null) {
             // Ocultar todas las pestañas
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.nav-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             
             // Mostrar pestaña seleccionada
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            if (originEl) {
+                originEl.classList.add('active');
+            } else {
+                const btn = document.querySelector(`.nav-tab[onclick*="${tabName}"]`);
+                if (btn) btn.classList.add('active');
+            }
             
             // Actualizar contenido según la pestaña
             if (tabName === 'registros') {
@@ -742,16 +728,22 @@
             const formData = new FormData(form);
             const editingId = form.dataset.editingId;
             
-            // Validar que todos los campos requeridos estén completos
+            // Capturas
             const tipoSeleccionado = formData.get('tipo');
             const manometroSeleccionado = formData.get('manometro');
             const manguerasSeleccionado = formData.get('mangueras');
             const difusorSeleccionado = formData.get('difusor');
             const estadoFisicoSeleccionado = formData.get('estado_fisico');
+            const observaciones = (document.getElementById('observaciones').value || '').trim();
             
-            if (!tipoSeleccionado || !manometroSeleccionado || !manguerasSeleccionado || 
-                !difusorSeleccionado || !estadoFisicoSeleccionado) {
+            // Validación básica
+            if (!tipoSeleccionado || !manometroSeleccionado || !manguerasSeleccionado || !estadoFisicoSeleccionado) {
                 showAlert('⚠️ Por favor completa todos los campos requeridos', 'warning');
+                return;
+            }
+            // Difusor sólo si es CO2
+            if (tipoSeleccionado === 'CO2' && !difusorSeleccionado) {
+                showAlert('⚠️ Selecciona el estado del difusor (solo CO2)', 'warning');
                 return;
             }
             
@@ -764,10 +756,13 @@
                 manometro: manometroSeleccionado,
                 mangueras: manguerasSeleccionado,
                 seguros: document.getElementById('seguros').checked,
-                selloSeguridad: document.getElementById('selloSeguridad').checked,
-                difusor: difusorSeleccionado,
+                selloSeguridad: (tipoSeleccionado === 'PQS') ? document.getElementById('selloSeguridad').checked : false,
+                // Difusor solo para CO2; en PQS se guarda vacío
+                difusor: tipoSeleccionado === 'CO2' ? (difusorSeleccionado || '') : '',
                 caducidad: document.getElementById('caducidad').value || '',
-                estado_fisico: estadoFisicoSeleccionado
+                estado_fisico: estadoFisicoSeleccionado,
+                // 📝 Observaciones opcionales
+                observaciones: observaciones
             };
             
             // Solo asignar mes y año para NUEVOS registros, NO para ediciones
@@ -779,40 +774,35 @@
             }
             
             if (editingId) {
-                // Actualizar registro existente
                 const success = updateRegistro(registro);
                 if (success) {
                     showAlert('✅ Registro actualizado exitosamente', 'success');
-                    // Salir del modo edición
                     cancelEdit();
                 } else {
                     showAlert('❌ Error al actualizar el registro', 'warning');
                 }
             } else {
-                // Guardar nuevo registro (fecha ya asignada arriba)
                 const guardadoExitoso = saveRegistro(registro);
-                
                 if (guardadoExitoso) {
                     showAlert('✅ Registro guardado exitosamente', 'success');
-                    
-                    // Limpiar formulario
                     form.reset();
-                    // Ocultar sello de seguridad al limpiar
+                    // Restablecer grupos dependientes
                     document.getElementById('selloSeguridadGroup').style.display = 'none';
+                    const difusorGroup = document.getElementById('difusorGroup');
+                    difusorGroup.style.display = 'block';
+                    document.querySelectorAll('input[name="difusor"]').forEach(r => r.required = true);
                 } else {
                     showAlert('❌ Error al guardar el registro', 'warning');
-                    return; // No limpiar el formulario si hubo error
+                    return;
                 }
             }
             
-            // Actualizar estadísticas
             updateStats();
         }
 
         function saveRegistro(registro) {
             console.log('💾 Guardando registro:', registro);
             
-            // Validar que el registro tenga los campos requeridos
             if (!registro.ubicacion || !registro.tipo || typeof registro.mes !== 'number' || typeof registro.año !== 'number') {
                 console.error('❌ Registro inválido:', registro);
                 showAlert('❌ Error: Registro con datos incompletos', 'warning');
@@ -823,12 +813,10 @@
                 let registros = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
                 console.log('💾 Registros existentes:', registros.length);
                 
-                // Asegurar que el registro tenga un ID único
                 if (!registro.id) {
                     registro.id = Date.now() + Math.floor(Math.random() * 10000);
                 }
                 
-                // Verificar que no exista un registro con el mismo ID
                 const existeId = registros.some(r => r.id === registro.id);
                 if (existeId) {
                     registro.id = Date.now() + Math.floor(Math.random() * 10000);
@@ -838,7 +826,6 @@
                 registros.push(registro);
                 localStorage.setItem('extintorRegistros', JSON.stringify(registros));
                 
-                // Verificar que se guardó correctamente
                 const verificacion = JSON.parse(localStorage.getItem('extintorRegistros') || '[]');
                 const registroGuardado = verificacion.find(r => r.id === registro.id);
                 
@@ -934,12 +921,17 @@
                         <div><strong>Tipo:</strong> ${registro.tipo}</div>
                         <div><strong>Capacidad:</strong> ${registro.capacidad} kg</div>
                         <div><strong>Manómetro:</strong> ${registro.manometro.replace('_', ' ')}</div>
-                        <div><strong>Mangueras:</strong> ${registro.mangueras}</div>
-                        <div><strong>Difusor:</strong> ${registro.difusor}</div>
+                        <div><strong>Mangueras:</strong> ${String(registro.mangueras || '').replace('_',' ')}</div>
+                        ${registro.tipo === 'CO2' ? `<div><strong>Difusor:</strong> ${registro.difusor ? registro.difusor.replace('_',' ') : 'No evaluado'}</div>` : ''}
                         <div><strong>Señalización:</strong> ${registro.senalizacion ? '✅' : '❌'}</div>
                         <div><strong>Seguros:</strong> ${registro.seguros ? '✅' : '❌'}</div>
                         ${registro.tipo === 'PQS' ? `<div><strong>Sello Seguridad:</strong> ${registro.selloSeguridad ? '✅' : '❌'}</div>` : ''}
                     </div>
+                    ${registro.observaciones ? `
+                        <div style="margin-top: 10px; padding: 10px; background: #fff8e6; border: 1px solid #ffe8b6; border-radius: 8px; font-size: 12px; color: #6c757d;">
+                            <strong>📝 Observaciones:</strong> ${registro.observaciones}
+                        </div>
+                    ` : ''}
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; font-size: 12px; color: #6c757d;">
                         <strong>Caducidad:</strong> ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'} | 
                         <strong>Registrado:</strong> ${new Date(registro.fecha).toLocaleDateString('es-ES')}
@@ -977,12 +969,13 @@
             }
             
             showTab('checklist');
-            document.querySelector('[onclick="showTab(\'checklist\')"]').classList.add('active');
+            document.querySelector(`.nav-tab[onclick*="checklist"]`)?.classList.add('active');
             
             setTimeout(() => {
                 document.getElementById('ubicacion').value = registro.ubicacion || '';
                 const tipoRadio = document.querySelector(`input[name="tipo"][value="${registro.tipo}"]`);
                 if (tipoRadio) tipoRadio.checked = true;
+                toggleSelloSeguridad();
                 document.getElementById('capacidad').value = registro.capacidad || '';
                 document.getElementById('senalizacion').checked = registro.senalizacion || false;
                 const manometroRadio = document.querySelector(`input[name="manometro"][value="${registro.manometro}"]`);
@@ -991,12 +984,13 @@
                 if (manguerasRadio) manguerasRadio.checked = true;
                 document.getElementById('seguros').checked = registro.seguros || false;
                 document.getElementById('selloSeguridad').checked = registro.selloSeguridad || false;
-                toggleSelloSeguridad();
                 const difusorRadio = document.querySelector(`input[name="difusor"][value="${registro.difusor}"]`);
                 if (difusorRadio) difusorRadio.checked = true;
                 document.getElementById('caducidad').value = registro.caducidad || '';
                 const estadoRadio = document.querySelector(`input[name="estado_fisico"][value="${registro.estado_fisico}"]`);
                 if (estadoRadio) estadoRadio.checked = true;
+                // 📝 cargar observaciones
+                document.getElementById('observaciones').value = registro.observaciones || '';
             }, 100);
             
             const form = document.getElementById('extinguisherForm');
@@ -1035,6 +1029,12 @@
             form.reset();
             document.getElementById('selloSeguridadGroup').style.display = 'none';
             document.getElementById('selloSeguridad').checked = false;
+            // Al cancelar, mostramos difusor y lo volvemos a requerir por defecto
+            const difusorGroup = document.getElementById('difusorGroup');
+            difusorGroup.style.display = 'block';
+            document.querySelectorAll('input[name="difusor"]').forEach(r => r.required = true);
+            // Limpiar observaciones
+            document.getElementById('observaciones').value = '';
             
             showAlert('❌ Edición cancelada', 'warning');
         }
@@ -1179,8 +1179,11 @@
                     mangueras: registro.mangueras || 'optimo',
                     seguros: registro.seguros || false,
                     selloSeguridad: registro.selloSeguridad || false,
-                    difusor: registro.difusor || 'optimo',
+                    // ✅ Difusor solo cuando es CO2
+                    difusor: (registro.tipo === 'CO2') ? (registro.difusor || 'optimo') : '',
                     estado_fisico: registro.estado_fisico || 'optimo',
+                    // 📝 copiar observaciones si existían
+                    observaciones: registro.observaciones || '',
                     
                     actualizadoDe: sourceName,
                     fechaActualizacion: new Date().toISOString(),
@@ -1330,8 +1333,11 @@
                         mangueras: prevRegistro.mangueras || 'optimo',
                         seguros: prevRegistro.seguros || false,
                         selloSeguridad: prevRegistro.selloSeguridad || false,
-                        difusor: prevRegistro.difusor || 'optimo',
+                        // ✅ Difusor solo para CO2
+                        difusor: (prevRegistro.tipo === 'CO2') ? (prevRegistro.difusor || 'optimo') : '',
                         estado_fisico: prevRegistro.estado_fisico || 'optimo',
+                        // 📝 mantener observaciones
+                        observaciones: prevRegistro.observaciones || '',
                         
                         actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
                         fechaActualizacionCompleta: new Date().toISOString(),
@@ -1355,8 +1361,11 @@
                         mangueras: prevRegistro.mangueras || 'optimo',
                         seguros: prevRegistro.seguros || false,
                         selloSeguridad: prevRegistro.selloSeguridad || false,
-                        difusor: prevRegistro.difusor || 'optimo',
+                        // ✅ Difusor solo para CO2
+                        difusor: (prevRegistro.tipo === 'CO2') ? (prevRegistro.difusor || 'optimo') : '',
                         estado_fisico: prevRegistro.estado_fisico || 'optimo',
+                        // 📝 observaciones
+                        observaciones: prevRegistro.observaciones || '',
                         
                         actualizadoDe: `${getMonthName(previousMonth)} ${previousYear}`,
                         fechaActualizacion: new Date().toISOString(),
@@ -1520,12 +1529,23 @@
                 content += `   - Capacidad: ${registro.capacidad} kg\n`;
                 content += `   - Estado Físico: ${registro.estado_fisico.replace('_', ' ')}\n`;
                 content += `   - Manómetro: ${registro.manometro.replace('_', ' ')}\n`;
+                // ✅ Difusor sólo para CO2
+                if (registro.tipo === 'CO2') {
+                    const dif = registro.difusor ? registro.difusor.replace('_',' ') : 'No registrado';
+                    content += `   - Difusor: ${dif}\n`;
+                }
                 content += `   - Señalización: ${registro.senalizacion ? 'Sí' : 'No'}\n`;
                 content += `   - Seguros y Cincho: ${registro.seguros ? 'Sí' : 'No'}\n`;
                 if (registro.tipo === 'PQS') {
                     content += `   - Sello de Seguridad: ${registro.selloSeguridad ? 'Sí' : 'No'}\n`;
                 }
-                content += `   - Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}\n\n`;
+                content += `   - Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}\n`;
+                // 📝 Observaciones justo debajo del extintor correspondiente
+                if (registro.observaciones && registro.observaciones.trim().length > 0) {
+                    const obs = registro.observaciones.replace(/\s+$/,'');
+                    content += `   - Observaciones: ${obs}\n`;
+                }
+                content += `\n`;
             });
 
             content += `\n--- Fin del Reporte ---\nGenerado por ExtintorCheck Pro`;
@@ -1621,10 +1641,7 @@
             yPosition += 15;
             
             registros.forEach((registro, index) => {
-                if (yPosition > 250) {
-                    doc.addPage();
-                    yPosition = margin;
-                }
+                if (yPosition > 250) { doc.addPage(); yPosition = margin; }
                 
                 doc.setFontSize(12);
                 doc.setFont(undefined, 'bold');
@@ -1638,6 +1655,14 @@
                 yPosition += 5;
                 doc.text(`Manómetro: ${registro.manometro.replace('_', ' ')}`, margin + 5, yPosition);
                 yPosition += 5;
+
+                // ✅ Difusor solo para CO2
+                if (registro.tipo === 'CO2') {
+                    const dif = registro.difusor ? registro.difusor.replace('_',' ') : 'No registrado';
+                    doc.text(`Difusor: ${dif}`, margin + 5, yPosition);
+                    yPosition += 5;
+                }
+
                 doc.text(`Señalización: ${registro.senalizacion ? 'Sí' : 'No'} | Seguros: ${registro.seguros ? 'Sí' : 'No'}`, margin + 5, yPosition);
                 yPosition += 5;
                 if (registro.tipo === 'PQS') {
@@ -1645,7 +1670,22 @@
                     yPosition += 5;
                 }
                 doc.text(`Caducidad: ${registro.caducidad ? new Date(registro.caducidad + 'T00:00:00').toLocaleDateString('es-ES') : 'No especificada'}`, margin + 5, yPosition);
-                yPosition += 10;
+                yPosition += 6;
+
+                // 📝 Observaciones envueltas y en cursiva debajo del extintor correspondiente
+                if (registro.observaciones && registro.observaciones.trim().length > 0) {
+                    if (yPosition > 250) { doc.addPage(); yPosition = margin; }
+                    doc.setFont(undefined, 'italic');
+                    doc.text('Observaciones:', margin + 5, yPosition);
+                    yPosition += 5;
+                    doc.setFont(undefined, 'normal');
+                    const maxWidth = pageWidth - (margin * 2) - 5;
+                    const wrapped = doc.splitTextToSize(registro.observaciones, maxWidth);
+                    doc.text(wrapped, margin + 8, yPosition);
+                    yPosition += (wrapped.length * 5) + 4;
+                }
+
+                yPosition += 6;
             });
             
             const today = new Date();
@@ -1962,11 +2002,11 @@
 
         function togglePDFManager() {
             const manager = document.getElementById('pdfManager');
-            if (manager.style.display === 'none') {
+            if (manager && manager.style.display === 'none') {
                 manager.style.display = 'block';
                 loadPDFList();
                 manager.scrollIntoView({ behavior: 'smooth' });
-            } else {
+            } else if (manager) {
                 manager.style.display = 'none';
             }
         }
